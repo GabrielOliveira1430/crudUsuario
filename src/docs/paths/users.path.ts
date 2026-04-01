@@ -25,7 +25,7 @@ export const userPaths = {
      */
     get: {
       tags: ['Users'],
-      summary: 'Listar usuários (paginado)',
+      summary: 'Listar usuários (paginado com filtros)',
       security: [{ bearerAuth: [] }],
       parameters: [
         {
@@ -39,6 +39,48 @@ export const userPaths = {
           in: 'query',
           required: false,
           schema: { type: 'integer', example: 10 }
+        },
+        {
+          name: 'name',
+          in: 'query',
+          required: false,
+          schema: { type: 'string', example: 'gabriel' },
+          description: 'Filtrar por nome (busca parcial)'
+        },
+        {
+          name: 'email',
+          in: 'query',
+          required: false,
+          schema: { type: 'string', example: 'email.com' },
+          description: 'Filtrar por email (busca parcial)'
+        },
+        {
+          name: 'search',
+          in: 'query',
+          required: false,
+          schema: { type: 'string', example: 'gabriel' },
+          description: 'Busca por nome OU email'
+        },
+        {
+          name: 'startDate',
+          in: 'query',
+          required: false,
+          schema: { type: 'string', example: '2026-01-01' },
+          description: 'Data inicial'
+        },
+        {
+          name: 'endDate',
+          in: 'query',
+          required: false,
+          schema: { type: 'string', example: '2026-12-31' },
+          description: 'Data final'
+        },
+        {
+          name: 'sort',
+          in: 'query',
+          required: false,
+          schema: { type: 'string', example: 'name:asc' },
+          description: 'Ordenação (ex: name:asc, createdAt:desc)'
         }
       ],
       responses: {

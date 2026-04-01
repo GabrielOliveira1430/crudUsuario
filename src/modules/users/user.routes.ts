@@ -13,6 +13,7 @@ import {
 import { authMiddleware } from '../../shared/middlewares/auth.middleware';
 import { roleMiddleware } from '../../shared/middlewares/role.middleware';
 import { validate } from '../../shared/middlewares/validate.middleware';
+import { authLimiter } from '../../shared/middlewares/rateLimit.middleware';
 
 import {
   createUserSchema,
@@ -29,8 +30,8 @@ const router = Router();
 // Criar usuário
 router.post('/', validate(createUserSchema), createUser);
 
-// Login
-router.post('/login', validate(loginSchema), login);
+// Login (com proteção contra brute force)
+router.post('/login', authLimiter, validate(loginSchema), login);
 
 /**
  * 🔐 ROTAS PROTEGIDAS
@@ -43,7 +44,7 @@ router.get('/me', authMiddleware, me);
 router.get(
   '/admin',
   authMiddleware,
-  roleMiddleware('ADMIN'), // 👈 PADRONIZADO
+  roleMiddleware('ADMIN'),
   (req, res) => {
     return res.json({ message: 'Área admin' });
   }
@@ -59,7 +60,7 @@ router.get('/', authMiddleware, roleMiddleware('ADMIN'), getUsers);
 // BUSCAR POR ID (ADMIN)
 router.get('/:id', authMiddleware, roleMiddleware('ADMIN'), getUser);
 
-// ATUALIZAR (usuário ou admin - vamos melhorar depois)
+// ATUALIZAR
 router.put(
   '/:id',
   authMiddleware,

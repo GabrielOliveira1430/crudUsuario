@@ -9,7 +9,10 @@ export const userSchemas = {
       name: { type: 'string', example: 'Gabriel' },
       email: { type: 'string', example: 'gabriel@email.com' },
       role: { type: 'string', example: 'USER' },
-      createdAt: { type: 'string', example: '2026-01-01T00:00:00Z' }
+      createdAt: {
+        type: 'string',
+        example: '2026-01-01T00:00:00Z'
+      }
     }
   },
 
@@ -20,9 +23,20 @@ export const userSchemas = {
     type: 'object',
     required: ['name', 'email', 'password'],
     properties: {
-      name: { type: 'string', example: 'Gabriel' },
-      email: { type: 'string', example: 'gabriel@email.com' },
-      password: { type: 'string', example: '123456' }
+      name: {
+        type: 'string',
+        example: 'Gabriel'
+      },
+      email: {
+        type: 'string',
+        example: 'gabriel@email.com'
+      },
+      password: {
+        type: 'string',
+        example: 'Senha@123',
+        description:
+          'Senha deve conter no mínimo 6 caracteres, 1 letra maiúscula, 1 número e 1 caractere especial'
+      }
     }
   },
 
@@ -33,8 +47,14 @@ export const userSchemas = {
     type: 'object',
     required: ['email', 'password'],
     properties: {
-      email: { type: 'string', example: 'gabriel@email.com' },
-      password: { type: 'string', example: '123456' }
+      email: {
+        type: 'string',
+        example: 'gabriel@email.com'
+      },
+      password: {
+        type: 'string',
+        example: 'Senha@123'
+      }
     }
   },
 
@@ -44,9 +64,20 @@ export const userSchemas = {
   UpdateUser: {
     type: 'object',
     properties: {
-      name: { type: 'string', example: 'Gabriel Atualizado' },
-      email: { type: 'string', example: 'novo@email.com' },
-      password: { type: 'string', example: '123456' },
+      name: {
+        type: 'string',
+        example: 'Gabriel Atualizado'
+      },
+      email: {
+        type: 'string',
+        example: 'novo@email.com'
+      },
+      password: {
+        type: 'string',
+        example: 'NovaSenha@123',
+        description:
+          'Senha deve conter no mínimo 6 caracteres, 1 letra maiúscula, 1 número e 1 caractere especial'
+      },
       role: {
         type: 'string',
         enum: ['USER', 'ADMIN'],
