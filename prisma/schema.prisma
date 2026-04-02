@@ -12,7 +12,38 @@ model User {
   name      String
   email     String   @unique
   password  String
-  role      String   @default("user") // 👈 NOVO CAMPO
+  role      String   @default("user")
+
+  isActive  Boolean  @default(true)
+
+  // 🔐 Segurança de login
+  loginAttempts Int      @default(0)
+  lockUntil     DateTime?
+
+  // 🛡 Monitoramento
+  lastLoginIp     String?
+  lastUserAgent   String?
+
+  // 🔐 2FA
+  twoFactorCode    String?
+  twoFactorExpires DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // 🔗 Relacionamento
+  refreshTokens RefreshToken[]
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }

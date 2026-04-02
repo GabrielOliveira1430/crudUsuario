@@ -30,17 +30,29 @@ const router = Router();
 // Criar usuário
 router.post('/', validate(createUserSchema), createUser);
 
-// Login (com proteção contra brute force)
+// Login (com rate limit)
 router.post('/login', authLimiter, validate(loginSchema), login);
 
 /**
  * 🔐 ROTAS PROTEGIDAS
  */
 
-// Perfil do usuário logado
+// Teste de autenticação
+router.get('/protected', authMiddleware, (req, res) => {
+  return res.json({
+    success: true,
+    message: 'Rota protegida funcionando 🚀',
+    user: (req as any).user
+  });
+});
+
+// Usuário logado
 router.get('/me', authMiddleware, me);
 
-// Área admin (teste)
+/**
+ * 🔐 ADMIN
+ */
+
 router.get(
   '/admin',
   authMiddleware,
@@ -51,16 +63,13 @@ router.get(
 );
 
 /**
- * 🔐 CRUD
+ * 🔐 CRUD ADMIN
  */
 
-// LISTAR (ADMIN)
 router.get('/', authMiddleware, roleMiddleware('ADMIN'), getUsers);
 
-// BUSCAR POR ID (ADMIN)
 router.get('/:id', authMiddleware, roleMiddleware('ADMIN'), getUser);
 
-// ATUALIZAR
 router.put(
   '/:id',
   authMiddleware,
@@ -68,7 +77,6 @@ router.put(
   updateUser
 );
 
-// DELETAR (ADMIN)
 router.delete(
   '/:id',
   authMiddleware,

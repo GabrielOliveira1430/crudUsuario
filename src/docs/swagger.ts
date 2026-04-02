@@ -3,27 +3,32 @@ import { userSchemas } from './schemas/user.docs';
 
 export const swaggerDocument = {
   openapi: '3.0.0',
+
   info: {
     title: 'API Profissional',
     version: '1.0.0',
-    description: 'API de usuários'
+    description: 'API de usuários e autenticação',
   },
 
   servers: [
     {
-      url: 'http://localhost:3000/api/v1'
-    }
+      url: 'http://localhost:3000/api/v1',
+    },
   ],
 
   tags: [
     {
       name: 'Users',
-      description: 'Rotas de usuários'
-    }
+      description: 'Rotas de usuários',
+    },
+    {
+      name: 'Auth',
+      description: 'Rotas de autenticação',
+    },
   ],
 
   paths: {
-    ...userPaths
+    ...userPaths,
   },
 
   components: {
@@ -31,18 +36,19 @@ export const swaggerDocument = {
       bearerAuth: {
         type: 'http',
         scheme: 'bearer',
-        bearerFormat: 'JWT'
-      }
+        bearerFormat: 'JWT',
+      },
     },
 
     schemas: {
-      ...userSchemas
-    }
+      ...userSchemas,
+    },
   },
 
+  // 🔐 Segurança global (pode ser sobrescrita por rota individual)
   security: [
     {
-      bearerAuth: []
-    }
-  ]
+      bearerAuth: [],
+    },
+  ],
 };
