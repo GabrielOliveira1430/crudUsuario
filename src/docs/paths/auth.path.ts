@@ -3,7 +3,8 @@ export const authPaths = {
     post: {
       tags: ['Auth'],
       summary: 'Login do usuário',
-      description: 'Realiza login e inicia fluxo de autenticação (pode incluir 2FA)',
+      description: 'Realiza login e inicia fluxo com 2FA',
+      security: [], // 🔥 login não precisa de token
       requestBody: {
         required: true,
         content: {
@@ -16,7 +17,38 @@ export const authPaths = {
       },
       responses: {
         200: {
-          description: 'Login realizado com sucesso',
+          description: 'Código 2FA enviado',
+        },
+        400: {
+          description: 'Credenciais inválidas',
+        },
+        429: {
+          description: 'Muitas tentativas',
+        },
+      },
+    },
+  },
+
+  // 🔥 NOVO ENDPOINT
+  '/auth/verify-2fa': {
+    post: {
+      tags: ['Auth'],
+      summary: 'Verificar código 2FA',
+      description: 'Valida código enviado por email e retorna tokens',
+      security: [], // 🔥 também não precisa token
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: {
+              $ref: '#/components/schemas/Verify2FAInput',
+            },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: 'Login concluído com sucesso',
           content: {
             'application/json': {
               schema: {
@@ -26,10 +58,7 @@ export const authPaths = {
           },
         },
         400: {
-          description: 'Credenciais inválidas',
-        },
-        429: {
-          description: 'Muitas tentativas de login',
+          description: 'Código inválido ou expirado',
         },
       },
     },
@@ -39,7 +68,8 @@ export const authPaths = {
     post: {
       tags: ['Auth'],
       summary: 'Gerar novo access token',
-      description: 'Usa refresh token para gerar um novo access token',
+      description: 'Usa refresh token',
+      security: [],
       requestBody: {
         required: true,
         content: {
@@ -53,13 +83,6 @@ export const authPaths = {
       responses: {
         200: {
           description: 'Token renovado com sucesso',
-          content: {
-            'application/json': {
-              schema: {
-                $ref: '#/components/schemas/AuthResponse',
-              },
-            },
-          },
         },
         403: {
           description: 'Token inválido ou expirado',
@@ -72,7 +95,7 @@ export const authPaths = {
     post: {
       tags: ['Auth'],
       summary: 'Logout do usuário',
-      description: 'Invalida sessão/token do usuário',
+      description: 'Invalida sessão/token',
       requestBody: {
         required: true,
         content: {

@@ -3,6 +3,9 @@ import prisma from '../../database/prisma';
 
 import { verifyAccessToken } from '../../modules/auth/token.service';
 
+// ✅ NOVO IMPORT
+import { isBlacklisted } from '../../modules/auth/tokenBlacklist.service';
+
 export const authMiddleware = async (
   req: Request,
   res: Response,
@@ -38,6 +41,16 @@ export const authMiddleware = async (
   }
 
   try {
+    // 🚫 VERIFICA BLACKLIST
+    const blocked = await isBlacklisted(token);
+
+    if (blocked) {
+      return res.status(401).json({
+        success: false,
+        error: 'Token inválido (logout)',
+      });
+    }
+
     // 🔍 Valida token
     const decoded = verifyAccessToken(token);
 
@@ -69,7 +82,7 @@ export const authMiddleware = async (
       });
     }
 
-    // ✅ Injeta user no request (padrão seguro)
+    // ✅ Injeta user no request
     (req as any).user = {
       id: user.id,
       role: user.role,

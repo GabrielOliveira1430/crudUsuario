@@ -15,6 +15,9 @@ import {
   logoutService,
 } from './auth.service';
 
+// ✅ NOVO IMPORT
+import { blacklistToken } from './tokenBlacklist.service';
+
 // 🔧 função padrão pra pegar IP (com correção IPv6)
 function getClientIp(req: Request): string {
   let ip =
@@ -137,25 +140,34 @@ export async function refresh(req: Request, res: Response) {
   }
 }
 
-// 🚪 LOGOUT
+// 🚪 LOGOUT (ATUALIZADO COM BLACKLIST)
 export async function logout(req: Request, res: Response) {
   try {
-    const { refreshToken } = req.body;
+    const authHeader = req.headers.authorization;
 
-    if (!refreshToken) {
+    if (!authHeader) {
       return res.status(400).json({
         success: false,
-        error: 'Refresh token obrigatório',
+        error: 'Token não fornecido',
       });
     }
 
-    const result = await logoutService(refreshToken);
+    const [, token] = authHeader.split(' ');
+
+    // 🔐 pega exp do token
+    const decoded = jwt.decode(token) as jwt.JwtPayload;
+
+    if (decoded?.exp) {
+      await blacklistToken(token, decoded.exp);
+    }
 
     return res.json({
       success: true,
-      data: result,
+      data: {
+        message: 'Logout realizado com sucesso',
+      },
     });
-  } catch (error) {
+  } catch {
     return res.status(500).json({
       success: false,
       error: 'Erro ao fazer logout',

@@ -1,5 +1,8 @@
 import { userPaths } from './paths/users.path';
+import { authPaths } from './paths/auth.path';
+
 import { userSchemas } from './schemas/user.docs';
+import { authSchemas } from './schemas/auth.docs'; // ✅ IMPORTANTE
 
 export const swaggerDocument = {
   openapi: '3.0.0',
@@ -29,6 +32,7 @@ export const swaggerDocument = {
 
   paths: {
     ...userPaths,
+    ...authPaths,
   },
 
   components: {
@@ -42,10 +46,10 @@ export const swaggerDocument = {
 
     schemas: {
       ...userSchemas,
+      ...authSchemas, // 🔥 ADICIONADO
     },
   },
 
-  // 🔐 Segurança global (pode ser sobrescrita por rota individual)
   security: [
     {
       bearerAuth: [],
