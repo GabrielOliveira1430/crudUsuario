@@ -1,11 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
 import prisma from '../../database/prisma';
 
-interface TokenPayload {
-  id: number;
-  role: string;
-}
+import { verifyAccessToken } from '../../modules/auth/token.service';
 
 export const authMiddleware = async (
   req: Request,
@@ -22,7 +18,7 @@ export const authMiddleware = async (
     });
   }
 
-  // 🔐 Verifica formato Bearer
+  // 🔐 Formato Bearer
   const parts = authHeader.split(' ');
 
   if (parts.length !== 2) {
@@ -42,17 +38,23 @@ export const authMiddleware = async (
   }
 
   try {
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET as string
-    ) as TokenPayload;
+    // 🔍 Valida token
+    const decoded = verifyAccessToken(token);
+
+    const userId = Number(decoded.sub);
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Token inválido',
+      });
+    }
 
     // 🔎 Busca usuário no banco
     const user = await prisma.user.findUnique({
-      where: { id: decoded.id },
+      where: { id: userId },
     });
 
-    // 🚫 Usuário inexistente ou bloqueado
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -67,10 +69,10 @@ export const authMiddleware = async (
       });
     }
 
-    // ✅ Injeta user no request
+    // ✅ Injeta user no request (padrão seguro)
     (req as any).user = {
-      id: decoded.id,
-      role: decoded.role,
+      id: user.id,
+      role: user.role,
     };
 
     return next();

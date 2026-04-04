@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import prisma from '../../database/prisma';
+
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -11,6 +12,11 @@ import {
   registerFailedAttempt,
   resetAttempts,
 } from '../../shared/middlewares/ipBlock.middleware';
+
+// 📩 MAIL SERVICE
+import { MailService } from '../mail/mail.service';
+
+const mailService = new MailService();
 
 // 🔐 GERAR CÓDIGO 2FA
 function generate2FACode() {
@@ -23,9 +29,9 @@ export async function login(req: Request, res: Response) {
     const { email, password } = req.body;
 
     const ip =
-      req.ip ||
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
       req.socket.remoteAddress ||
-      req.headers['x-forwarded-for']?.toString() ||
+      req.ip ||
       'unknown';
 
     const user = await prisma.user.findUnique({
@@ -125,7 +131,12 @@ export async function login(req: Request, res: Response) {
 
     resetAttempts(ip);
 
-    console.log('🔐 Código 2FA:', code);
+    // 📩 ENVIO DE EMAIL (não quebra login se falhar)
+    try {
+      await mailService.send2FACode(user.email, code);
+    } catch (err) {
+      console.error('Erro ao enviar email:', err);
+    }
 
     return res.json({
       success: true,
@@ -156,21 +167,21 @@ export async function verify2FA(req: Request, res: Response) {
     if (!user || !user.twoFactorCode) {
       return res.status(400).json({
         success: false,
-        error: 'Código inválido',
+        error: 'Código inválido ou expirado',
       });
     }
 
     if (user.twoFactorExpires && user.twoFactorExpires < new Date()) {
       return res.status(400).json({
         success: false,
-        error: 'Código expirado',
+        error: 'Código inválido ou expirado',
       });
     }
 
     if (user.twoFactorCode !== code) {
       return res.status(400).json({
         success: false,
-        error: 'Código inválido',
+        error: 'Código inválido ou expirado',
       });
     }
 
@@ -200,7 +211,7 @@ export async function verify2FA(req: Request, res: Response) {
         refreshToken,
       },
     });
-  } catch {
+  } catch (error) {
     return res.status(500).json({
       success: false,
       error: 'Erro na verificação',
@@ -247,6 +258,7 @@ export async function refresh(req: Request, res: Response) {
       });
     }
 
+    // 🔄 ROTAÇÃO
     await prisma.refreshToken.delete({
       where: { token: refreshToken },
     });
@@ -271,7 +283,7 @@ export async function refresh(req: Request, res: Response) {
         refreshToken: newRefreshToken,
       },
     });
-  } catch {
+  } catch (error) {
     return res.status(403).json({
       success: false,
       error: 'Token inválido ou expirado',
@@ -301,7 +313,7 @@ export async function logout(req: Request, res: Response) {
         message: 'Logout realizado com sucesso',
       },
     });
-  } catch {
+  } catch (error) {
     return res.status(500).json({
       success: false,
       error: 'Erro ao fazer logout',

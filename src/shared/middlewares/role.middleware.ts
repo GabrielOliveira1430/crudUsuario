@@ -1,15 +1,24 @@
 import { Request, Response, NextFunction } from 'express';
+import { Role } from '@prisma/client';
 
-export const roleMiddleware = (role: string) => {
+export const roleMiddleware = (...roles: Role[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Não autenticado' });
+    const user = (req as any).user;
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: 'Não autenticado',
+      });
     }
 
-    if (req.user.role !== role) {
-      return res.status(403).json({ error: 'Acesso negado' });
+    if (!roles.includes(user.role)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Acesso negado',
+      });
     }
 
-    next();
+    return next();
   };
 };
