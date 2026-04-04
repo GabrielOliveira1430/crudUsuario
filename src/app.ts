@@ -13,15 +13,15 @@ const app = express();
 
 // 🔧 Middlewares básicos
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // ✅ extra
+app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use(helmet());
 
 // 📊 Logs
 app.use(morgan('dev'));
 
-// 🚧 Rate limit global
-app.use(globalLimiter);
+// 🚧 Rate limit global (DESATIVADO TEMPORARIAMENTE)
+// app.use(globalLimiter);
 
 // 📘 Swagger
 swaggerSetup(app);

@@ -5,7 +5,7 @@ import rateLimit from 'express-rate-limit';
  */
 export const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // limite por IP
+  max: 1000, // 🔥 AUMENTADO TEMPORARIAMENTE
   message: {
     success: false,
     error: 'Muitas requisições, tente novamente mais tarde'
@@ -19,7 +19,7 @@ export const globalLimiter = rateLimit({
  */
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 100, // 🔥 AUMENTADO TEMPORARIAMENTE PARA TESTES
   message: {
     success: false,
     error: 'Muitas tentativas de login, tente novamente mais tarde'

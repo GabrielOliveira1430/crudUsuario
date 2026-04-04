@@ -1,48 +1,71 @@
-const attempts = new Map<string, { count: number; lockUntil?: number }>();
+import { Request, Response, NextFunction } from 'express';
+import { redis } from '../config/redis';
 
 const MAX_ATTEMPTS = 5;
-const BLOCK_TIME = 15 * 60 * 1000; // 15 minutos
+const BLOCK_TIME = 15 * 60; // segundos
 
-export function ipBlockMiddleware(req: any, res: any, next: any) {
-  const ip = req.ip;
+// 🔧 função padrão de IP (igual ao controller)
+function getClientIp(req: Request): string {
+  let ip =
+    (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+    req.socket.remoteAddress ||
+    req.ip ||
+    'unknown';
 
-  const record = attempts.get(ip);
+  if (ip.startsWith('::ffff:')) {
+    ip = ip.replace('::ffff:', '');
+  }
 
-  // 🔒 IP bloqueado
-  if (record?.lockUntil && record.lockUntil > Date.now()) {
-    const minutesLeft = Math.ceil(
-      (record.lockUntil - Date.now()) / 60000
-    );
+  return ip;
+}
 
+// 🔒 Middleware
+export async function ipBlockMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  const ip = getClientIp(req);
+
+  const blockKey = `login:block:${ip}`;
+
+  const isBlocked = await redis.get(blockKey);
+
+  if (isBlocked) {
     return res.status(429).json({
       success: false,
-      error: `Muitas tentativas. Tente novamente em ${minutesLeft} minuto(s).`,
+      error: 'IP bloqueado temporariamente. Tente novamente mais tarde.',
     });
   }
 
-  // inicializa
-  if (!record) {
-    attempts.set(ip, { count: 0 });
-  }
-
-  next();
+  return next();
 }
 
 // 📈 registrar erro
-export function registerFailedAttempt(ip: string) {
-  const record = attempts.get(ip) || { count: 0 };
+export async function registerFailedAttempt(ip: string) {
+  const attemptsKey = `login:attempts:${ip}`;
+  const blockKey = `login:block:${ip}`;
 
-  record.count += 1;
+  const attempts = await redis.incr(attemptsKey);
 
-  if (record.count >= MAX_ATTEMPTS) {
-    record.count = 0;
-    record.lockUntil = Date.now() + BLOCK_TIME;
+  // define expiração na primeira tentativa
+  if (attempts === 1) {
+    await redis.expire(attemptsKey, BLOCK_TIME);
   }
 
-  attempts.set(ip, record);
+  if (attempts >= MAX_ATTEMPTS) {
+    await redis.set(blockKey, '1', 'EX', BLOCK_TIME);
+
+    // limpa contador
+    await redis.del(attemptsKey);
+  }
 }
 
 // ✅ resetar sucesso
-export function resetAttempts(ip: string) {
-  attempts.delete(ip);
+export async function resetAttempts(ip: string) {
+  const attemptsKey = `login:attempts:${ip}`;
+  const blockKey = `login:block:${ip}`;
+
+  await redis.del(attemptsKey);
+  await redis.del(blockKey);
 }

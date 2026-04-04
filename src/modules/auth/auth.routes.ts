@@ -5,21 +5,24 @@ import { validate } from '../../shared/middlewares/validate.middleware';
 import { loginSchema, verify2FASchema } from './auth.schema';
 
 import { ipBlockMiddleware } from '../../shared/middlewares/ipBlock.middleware';
+import { authLimiter } from '../../shared/middlewares/rateLimit.middleware';
 
 const router = Router();
 
-// 🔐 LOGIN (com proteção de IP)
+// 🔐 LOGIN (ORDEM CORRETA: Redis → RateLimit → Validate → Controller)
 router.post(
   '/login',
-  ipBlockMiddleware,
+  ipBlockMiddleware,   // 🔥 verifica bloqueio no Redis primeiro
+  authLimiter,         // 🔥 limita tentativas de login
   validate(loginSchema),
   login
 );
 
-// 🔐 VERIFICAÇÃO 2FA (protegido também contra brute force)
+// 🔐 VERIFICAÇÃO 2FA (também protegido)
 router.post(
   '/verify-2fa',
   ipBlockMiddleware,
+  authLimiter,
   validate(verify2FASchema),
   verify2FA
 );
