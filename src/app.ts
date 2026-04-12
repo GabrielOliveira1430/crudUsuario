@@ -40,8 +40,6 @@ const routes = express.Router();
 routes.use('/users', userRoutes);
 routes.use('/auth', authRoutes);
 routes.use('/audit-logs', auditRoutes);
-
-// 🔥 SECURITY ROUTES (ADICIONADO CORRETAMENTE)
 routes.use('/security', securityRoutes);
 
 // base path da API
@@ -49,7 +47,7 @@ app.use('/api/v1', routes);
 
 // 🔍 Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
+  return res.json({ status: 'ok' });
 });
 
 // 🔥 AUDITORIA GLOBAL (DEPOIS DAS ROTAS)

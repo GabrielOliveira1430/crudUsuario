@@ -49,8 +49,12 @@ export async function login(req: Request, res: Response) {
 
     await resetAttempts(ip);
 
-    return res.json({
+    return res.status(200).json({
       success: true,
+
+      // ✅ ADICIONADO PARA O TESTE
+      message: result.message || 'Código 2FA enviado com sucesso',
+
       data: {
         message: result.message,
         security: {
@@ -77,6 +81,7 @@ export async function verify2FA(req: Request, res: Response) {
 
     return res.json({
       success: true,
+      message: '2FA verificado com sucesso',
       data: result,
     });
   } catch (error: any) {
@@ -132,6 +137,7 @@ export async function refresh(req: Request, res: Response) {
 
     return res.json({
       success: true,
+      message: 'Token renovado com sucesso',
       data: result,
     });
   } catch {
@@ -142,7 +148,7 @@ export async function refresh(req: Request, res: Response) {
   }
 }
 
-// 🚪 LOGOUT (CORRIGIDO 100%)
+// 🚪 LOGOUT
 export async function logout(req: Request, res: Response) {
   try {
     const authHeader = req.headers.authorization;
@@ -164,18 +170,17 @@ export async function logout(req: Request, res: Response) {
 
     const [, accessToken] = authHeader.split(' ');
 
-    // 🔐 extrai exp do accessToken
     const decoded = jwt.decode(accessToken) as jwt.JwtPayload;
 
     if (decoded?.exp) {
       await blacklistToken(accessToken, decoded.exp);
     }
 
-    // 🔥 AGORA PASSA OS 2 PARAMETROS
     const result = await logoutService(refreshToken, accessToken);
 
     return res.json({
       success: true,
+      message: 'Logout realizado com sucesso',
       data: result,
     });
   } catch {
@@ -195,6 +200,7 @@ export async function forgotPassword(req: Request, res: Response) {
 
     return res.json({
       success: true,
+      message: 'Email de recuperação enviado',
       data: result,
     });
   } catch (error: any) {
@@ -214,6 +220,7 @@ export async function resetPassword(req: Request, res: Response) {
 
     return res.json({
       success: true,
+      message: 'Senha redefinida com sucesso',
       data: result,
     });
   } catch (error: any) {

@@ -6,16 +6,16 @@ import { redis } from './shared/config/redis';
 
 const PORT = process.env.PORT || 3000;
 
-// 🚀 TESTAR REDIS NA INICIALIZAÇÃO
+// 🚀 Função de inicialização
 async function startServer() {
   try {
-    // Teste de conexão com Redis
+    // ✅ Teste de conexão com Redis
     await redis.set('test', 'ok');
     const value = await redis.get('test');
 
     console.log('🟢 Redis conectado:', value);
 
-    // Iniciar servidor
+    // ✅ Subir servidor
     app.listen(PORT, () => {
       console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
       console.log(`📘 Swagger em http://localhost:${PORT}/api-docs`);
@@ -26,4 +26,9 @@ async function startServer() {
   }
 }
 
-startServer();
+// 🚀 Só inicia se NÃO estiver em teste
+if (process.env.NODE_ENV !== 'test') {
+  startServer();
+}
+
+export { startServer };
