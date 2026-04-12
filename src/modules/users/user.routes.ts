@@ -2,7 +2,6 @@ import { Router } from 'express';
 
 import {
   createUser,
-  login,
   me,
   getUsers,
   getUser,
@@ -12,12 +11,11 @@ import {
 
 import { authMiddleware } from '../../shared/middlewares/auth.middleware';
 import { roleMiddleware } from '../../shared/middlewares/role.middleware';
+import { permissionMiddleware } from '../../shared/middlewares/permission.middleware';
 import { validate } from '../../shared/middlewares/validate.middleware';
-import { authLimiter } from '../../shared/middlewares/rateLimit.middleware';
 
 import {
   createUserSchema,
-  loginSchema,
   updateUserSchema
 } from './user.schema';
 
@@ -29,9 +27,6 @@ const router = Router();
 
 // Criar usuário
 router.post('/', validate(createUserSchema), createUser);
-
-// Login (com rate limit)
-router.post('/login', authLimiter, validate(loginSchema), login);
 
 /**
  * 🔐 ROTAS PROTEGIDAS
@@ -50,7 +45,7 @@ router.get('/protected', authMiddleware, (req, res) => {
 router.get('/me', authMiddleware, me);
 
 /**
- * 🔐 ADMIN
+ * 🔐 ADMIN (ROLE - opcional manter)
  */
 
 router.get(
@@ -63,24 +58,39 @@ router.get(
 );
 
 /**
- * 🔐 CRUD ADMIN
+ * 🔐 RBAC (PERMISSÕES - PROFISSIONAL)
  */
 
-router.get('/', authMiddleware, roleMiddleware('ADMIN'), getUsers);
+// 🔥 LISTAR USUÁRIOS
+router.get(
+  '/',
+  authMiddleware,
+  permissionMiddleware('user:read'),
+  getUsers
+);
 
-router.get('/:id', authMiddleware, roleMiddleware('ADMIN'), getUser);
+// 🔥 BUSCAR POR ID
+router.get(
+  '/:id',
+  authMiddleware,
+  permissionMiddleware('user:read'),
+  getUser
+);
 
+// 🔥 ATUALIZAR
 router.put(
   '/:id',
   authMiddleware,
+  permissionMiddleware('user:update'),
   validate(updateUserSchema),
   updateUser
 );
 
+// 🔥 DELETAR
 router.delete(
   '/:id',
   authMiddleware,
-  roleMiddleware('ADMIN'),
+  permissionMiddleware('user:delete'),
   deleteUser
 );
 

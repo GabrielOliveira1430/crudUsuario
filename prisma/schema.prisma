@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// 🔐 ENUM DE ROLES (TIPADO E SEGURO)
+// 🔐 ENUM DE ROLES
 enum Role {
   USER
   ADMIN
@@ -18,19 +18,16 @@ model User {
   name      String
   email     String  @unique
   password  String
-
-  // 🔥 ROLE TIPADO (SEM STRING)
   role      Role    @default(USER)
-
   isActive  Boolean @default(true)
 
-  // 🔐 Segurança de login
+  // 🔐 Segurança
   loginAttempts Int       @default(0)
   lockUntil     DateTime?
 
   // 🛡 Monitoramento
-  lastLoginIp   String?
-  lastUserAgent String?
+  lastLoginIp    String?
+  lastUserAgent  String?
 
   // 🔐 2FA
   twoFactorCode    String?
@@ -39,8 +36,11 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // 🔗 Relacionamento
-  refreshTokens RefreshToken[]
+  // 🔗 Relacionamentos
+  refreshTokens        RefreshToken[]
+  passwordResetTokens  PasswordResetToken[]
+  auditLogs            AuditLog[]   // ✅ relação adicionada
+
 }
 
 model RefreshToken {
@@ -54,4 +54,57 @@ model RefreshToken {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// 🔐 PERMISSÕES
+model Permission {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+
+  roles     RolePermission[]
+
+  createdAt DateTime @default(now())
+}
+
+// 🔗 RELAÇÃO ROLE ↔ PERMISSION
+model RolePermission {
+  id           Int @id @default(autoincrement())
+
+  role         Role
+  permissionId Int
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([role, permissionId])
+  @@index([role])
+}
+
+// 🧾 AUDITORIA
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+
+  userId     Int?
+  action     String
+  entity     String
+  entityId   Int?
+  metadata   Json?
+
+  ip         String?
+  userAgent  String?
+
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
 }

@@ -4,7 +4,7 @@ export const authPaths = {
       tags: ['Auth'],
       summary: 'Login do usuário',
       description: 'Realiza login e inicia fluxo com 2FA',
-      security: [], // 🔥 login não precisa de token
+      security: [],
       requestBody: {
         required: true,
         content: {
@@ -29,13 +29,12 @@ export const authPaths = {
     },
   },
 
-  // 🔥 NOVO ENDPOINT
   '/auth/verify-2fa': {
     post: {
       tags: ['Auth'],
       summary: 'Verificar código 2FA',
       description: 'Valida código enviado por email e retorna tokens',
-      security: [], // 🔥 também não precisa token
+      security: [],
       requestBody: {
         required: true,
         content: {
@@ -96,6 +95,7 @@ export const authPaths = {
       tags: ['Auth'],
       summary: 'Logout do usuário',
       description: 'Invalida sessão/token',
+      security: [{ bearerAuth: [] }],
       requestBody: {
         required: true,
         content: {
@@ -109,6 +109,59 @@ export const authPaths = {
       responses: {
         200: {
           description: 'Logout realizado com sucesso',
+        },
+      },
+    },
+  },
+
+  // 🔥 NOVOS ENDPOINTS
+
+  '/auth/forgot-password': {
+    post: {
+      tags: ['Auth'],
+      summary: 'Solicitar recuperação de senha',
+      description: 'Envia link de recuperação por email',
+      security: [],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: {
+              $ref: '#/components/schemas/ForgotPasswordInput',
+            },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: 'Email enviado (se existir)',
+        },
+      },
+    },
+  },
+
+  '/auth/reset-password': {
+    post: {
+      tags: ['Auth'],
+      summary: 'Redefinir senha',
+      description: 'Atualiza senha usando token de recuperação',
+      security: [],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: {
+              $ref: '#/components/schemas/ResetPasswordInput',
+            },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: 'Senha redefinida com sucesso',
+        },
+        400: {
+          description: 'Token inválido ou expirado',
         },
       },
     },

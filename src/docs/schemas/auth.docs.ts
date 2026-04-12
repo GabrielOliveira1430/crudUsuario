@@ -43,7 +43,7 @@ export const authSchemas = {
     },
   },
 
-  // 🔐 VERIFY 2FA (OBRIGATÓRIO)
+  // 🔐 VERIFY 2FA
   Verify2FAInput: {
     type: 'object',
     required: ['email', 'code'],
@@ -83,6 +83,7 @@ export const authSchemas = {
     },
   },
 
+  // 🔄 REFRESH
   RefreshInput: {
     type: 'object',
     properties: {
@@ -94,6 +95,7 @@ export const authSchemas = {
     required: ['refreshToken'],
   },
 
+  // 🚪 LOGOUT
   LogoutInput: {
     type: 'object',
     properties: {
@@ -103,5 +105,35 @@ export const authSchemas = {
       },
     },
     required: ['refreshToken'],
+  },
+
+  // 🔥 NOVOS SCHEMAS
+
+  // 📩 FORGOT PASSWORD
+  ForgotPasswordInput: {
+    type: 'object',
+    properties: {
+      email: {
+        type: 'string',
+        example: 'usuario@email.com',
+      },
+    },
+    required: ['email'],
+  },
+
+  // 🔐 RESET PASSWORD
+  ResetPasswordInput: {
+    type: 'object',
+    properties: {
+      token: {
+        type: 'string',
+        example: 'token_recebido_email',
+      },
+      password: {
+        type: 'string',
+        example: 'NovaSenha123',
+      },
+    },
+    required: ['token', 'password'],
   },
 };

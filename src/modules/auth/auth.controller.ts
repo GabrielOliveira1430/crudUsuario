@@ -15,10 +15,14 @@ import {
   logoutService,
 } from './auth.service';
 
-// ✅ NOVO IMPORT
+import {
+  forgotPasswordService,
+  resetPasswordService,
+} from './password.service';
+
 import { blacklistToken } from './tokenBlacklist.service';
 
-// 🔧 função padrão pra pegar IP (com correção IPv6)
+// 🔧 função padrão pra pegar IP
 function getClientIp(req: Request): string {
   let ip =
     (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
@@ -43,7 +47,6 @@ export async function login(req: Request, res: Response) {
 
     const result = await loginService(email, password, ip, userAgent);
 
-    // ✅ resetar tentativas no Redis
     await resetAttempts(ip);
 
     return res.json({
@@ -56,7 +59,6 @@ export async function login(req: Request, res: Response) {
       },
     });
   } catch (error: any) {
-    // ✅ registrar tentativa no Redis
     await registerFailedAttempt(ip);
 
     return res.status(400).json({
@@ -132,7 +134,7 @@ export async function refresh(req: Request, res: Response) {
       success: true,
       data: result,
     });
-  } catch (error) {
+  } catch {
     return res.status(403).json({
       success: false,
       error: 'Token inválido ou expirado',
@@ -140,10 +142,11 @@ export async function refresh(req: Request, res: Response) {
   }
 }
 
-// 🚪 LOGOUT (ATUALIZADO COM BLACKLIST)
+// 🚪 LOGOUT (CORRIGIDO 100%)
 export async function logout(req: Request, res: Response) {
   try {
     const authHeader = req.headers.authorization;
+    const { refreshToken } = req.body;
 
     if (!authHeader) {
       return res.status(400).json({
@@ -152,25 +155,71 @@ export async function logout(req: Request, res: Response) {
       });
     }
 
-    const [, token] = authHeader.split(' ');
+    if (!refreshToken) {
+      return res.status(400).json({
+        success: false,
+        error: 'Refresh token obrigatório',
+      });
+    }
 
-    // 🔐 pega exp do token
-    const decoded = jwt.decode(token) as jwt.JwtPayload;
+    const [, accessToken] = authHeader.split(' ');
+
+    // 🔐 extrai exp do accessToken
+    const decoded = jwt.decode(accessToken) as jwt.JwtPayload;
 
     if (decoded?.exp) {
-      await blacklistToken(token, decoded.exp);
+      await blacklistToken(accessToken, decoded.exp);
     }
+
+    // 🔥 AGORA PASSA OS 2 PARAMETROS
+    const result = await logoutService(refreshToken, accessToken);
 
     return res.json({
       success: true,
-      data: {
-        message: 'Logout realizado com sucesso',
-      },
+      data: result,
     });
   } catch {
     return res.status(500).json({
       success: false,
       error: 'Erro ao fazer logout',
+    });
+  }
+}
+
+// 📩 FORGOT PASSWORD
+export async function forgotPassword(req: Request, res: Response) {
+  try {
+    const { email } = req.body;
+
+    const result = await forgotPasswordService(email);
+
+    return res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error: any) {
+    return res.status(400).json({
+      success: false,
+      error: error.message || 'Erro ao solicitar recuperação',
+    });
+  }
+}
+
+// 🔐 RESET PASSWORD
+export async function resetPassword(req: Request, res: Response) {
+  try {
+    const { token, password } = req.body;
+
+    const result = await resetPasswordService(token, password);
+
+    return res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error: any) {
+    return res.status(400).json({
+      success: false,
+      error: error.message || 'Erro ao redefinir senha',
     });
   }
 }

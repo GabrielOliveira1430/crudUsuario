@@ -1,23 +1,25 @@
 import prisma from '../../database/prisma';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 
-import { CreateUserDTO, LoginDTO } from './user.types';
+import { CreateUserDTO } from './user.types';
 import { AppError } from '../../shared/errors/AppError';
 
+const SALT_ROUNDS = 10;
+
 /**
- * Criar usuário (com hash da senha)
+ * Criar usuário
  */
 export const create = async (data: CreateUserDTO) => {
   const exists = await prisma.user.findUnique({
-    where: { email: data.email }
+    where: { email: data.email },
+    select: { id: true }
   });
 
   if (exists) {
     throw new AppError('Email já existe', 400);
   }
 
-  const hashedPassword = await bcrypt.hash(data.password, 10);
+  const hashedPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
 
   const user = await prisma.user.create({
     data: {
@@ -36,41 +38,6 @@ export const create = async (data: CreateUserDTO) => {
   });
 
   return user;
-};
-
-/**
- * Login do usuário
- */
-export const login = async (data: LoginDTO) => {
-  const user = await prisma.user.findUnique({
-    where: { email: data.email }
-  });
-
-  if (!user) {
-    throw new AppError('Credenciais inválidas', 401);
-  }
-
-  const isPasswordValid = await bcrypt.compare(
-    data.password,
-    user.password
-  );
-
-  if (!isPasswordValid) {
-    throw new AppError('Credenciais inválidas', 401);
-  }
-
-  const token = jwt.sign(
-    {
-      id: user.id,
-      role: user.role
-    },
-    process.env.JWT_SECRET as string,
-    { expiresIn: '1d' }
-  );
-
-  return {
-    token
-  };
 };
 
 /**
@@ -116,9 +83,6 @@ export const getAll = async (
     AND: []
   };
 
-  /**
-   * 🔍 BUSCA GLOBAL (nome OU email)
-   */
   if (filters?.search) {
     where.AND.push({
       OR: [
@@ -138,9 +102,6 @@ export const getAll = async (
     });
   }
 
-  /**
-   * 🔍 FILTRO POR NOME
-   */
   if (filters?.name) {
     where.AND.push({
       name: {
@@ -150,9 +111,6 @@ export const getAll = async (
     });
   }
 
-  /**
-   * 🔍 FILTRO POR EMAIL
-   */
   if (filters?.email) {
     where.AND.push({
       email: {
@@ -162,9 +120,6 @@ export const getAll = async (
     });
   }
 
-  /**
-   * 📅 FILTRO POR DATA
-   */
   if (filters?.startDate || filters?.endDate) {
     where.AND.push({
       createdAt: {
@@ -174,9 +129,6 @@ export const getAll = async (
     });
   }
 
-  /**
-   * 🔃 ORDENAÇÃO SEGURA
-   */
   const allowedSortFields = ['name', 'email', 'createdAt'];
 
   let orderBy: any = { createdAt: 'desc' };
@@ -191,23 +143,26 @@ export const getAll = async (
     }
   }
 
-  const users = await prisma.user.findMany({
-    where: where.AND.length ? where : undefined,
-    orderBy,
-    skip,
-    take: limit,
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      createdAt: true
-    }
-  });
+  const finalWhere = where.AND.length ? where : undefined;
 
-  const total = await prisma.user.count({
-    where: where.AND.length ? where : undefined
-  });
+  const [users, total] = await Promise.all([
+    prisma.user.findMany({
+      where: finalWhere,
+      orderBy,
+      skip,
+      take: limit,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true
+      }
+    }),
+    prisma.user.count({
+      where: finalWhere
+    })
+  ]);
 
   return {
     data: users,
@@ -246,38 +201,52 @@ export const getById = async (id: number) => {
  * Atualizar usuário
  */
 export const update = async (id: number, data: any) => {
-  if (data.password) {
-    data.password = await bcrypt.hash(data.password, 10);
-  }
+  const exists = await prisma.user.findUnique({
+    where: { id },
+    select: { id: true }
+  });
 
-  try {
-    return await prisma.user.update({
-      where: { id },
-      data,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        updatedAt: true
-      }
-    });
-  } catch (error) {
+  if (!exists) {
     throw new AppError('Usuário não encontrado', 404);
   }
+
+  const updateData = { ...data };
+
+  if (updateData.password) {
+    updateData.password = await bcrypt.hash(updateData.password, SALT_ROUNDS);
+  }
+
+  const updated = await prisma.user.update({
+    where: { id },
+    data: updateData,
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      updatedAt: true
+    }
+  });
+
+  return updated;
 };
 
 /**
  * Deletar usuário
  */
 export const remove = async (id: number) => {
-  try {
-    await prisma.user.delete({
-      where: { id }
-    });
+  const exists = await prisma.user.findUnique({
+    where: { id },
+    select: { id: true }
+  });
 
-    return { message: 'Usuário deletado com sucesso' };
-  } catch (error) {
+  if (!exists) {
     throw new AppError('Usuário não encontrado', 404);
   }
+
+  await prisma.user.delete({
+    where: { id }
+  });
+
+  return { message: 'Usuário deletado com sucesso' };
 };

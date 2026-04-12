@@ -1,16 +1,21 @@
 import jwt, { JwtPayload } from 'jsonwebtoken';
+import crypto from 'crypto';
 
-// 📌 CONFIG PADRÃO (pode ir pro .env depois)
+// 📌 CONFIG PADRÃO
 const ACCESS_TOKEN_EXPIRES_IN = '15m';
 const REFRESH_TOKEN_EXPIRES_IN = '7d';
 
 const ISSUER = 'api-node-prisma';
 const AUDIENCE = 'users';
 
-// 🔐 GERAR ACCESS TOKEN
-export function generateAccessToken(userId: number) {
+// 🔐 GERAR ACCESS TOKEN (COM ROLE + JTI)
+export function generateAccessToken(userId: number, role?: string) {
   return jwt.sign(
-    { sub: userId },
+    {
+      sub: String(userId), // 🔥 padrão JWT
+      ...(role && { role }), // só inclui se existir
+      jti: crypto.randomUUID(),
+    },
     process.env.JWT_SECRET as string,
     {
       expiresIn: ACCESS_TOKEN_EXPIRES_IN,
@@ -20,10 +25,13 @@ export function generateAccessToken(userId: number) {
   );
 }
 
-// 🔐 GERAR REFRESH TOKEN
+// 🔐 GERAR REFRESH TOKEN (COM JTI)
 export function generateRefreshToken(userId: number) {
   return jwt.sign(
-    { sub: userId },
+    {
+      sub: String(userId),
+      jti: crypto.randomUUID(),
+    },
     process.env.JWT_REFRESH_SECRET as string,
     {
       expiresIn: REFRESH_TOKEN_EXPIRES_IN,

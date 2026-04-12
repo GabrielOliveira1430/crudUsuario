@@ -7,27 +7,13 @@ import * as service from './user.service';
 export const createUser = async (req: Request, res: Response) => {
   try {
     const user = await service.create(req.body);
+
     return res.status(201).json({
       success: true,
       data: user
     });
   } catch (err: any) {
     return res.status(400).json({ error: err.message });
-  }
-};
-
-/**
- * Login
- */
-export const login = async (req: Request, res: Response) => {
-  try {
-    const result = await service.login(req.body);
-    return res.json({
-      success: true,
-      data: result
-    });
-  } catch (err: any) {
-    return res.status(401).json({ error: err.message });
   }
 };
 
@@ -82,6 +68,7 @@ export const getUsers = async (req: Request, res: Response) => {
 export const getUser = async (req: Request, res: Response) => {
   try {
     const user = await service.getById(Number(req.params.id));
+
     return res.json({
       success: true,
       data: user
@@ -96,7 +83,11 @@ export const getUser = async (req: Request, res: Response) => {
  */
 export const updateUser = async (req: Request, res: Response) => {
   try {
-    const user = await service.update(Number(req.params.id), req.body);
+    const user = await service.update(
+      Number(req.params.id),
+      req.body
+    );
+
     return res.json({
       success: true,
       data: user
@@ -111,7 +102,10 @@ export const updateUser = async (req: Request, res: Response) => {
  */
 export const deleteUser = async (req: Request, res: Response) => {
   try {
-    const result = await service.remove(Number(req.params.id));
+    const result = await service.remove(
+      Number(req.params.id)
+    );
+
     return res.json({
       success: true,
       data: result

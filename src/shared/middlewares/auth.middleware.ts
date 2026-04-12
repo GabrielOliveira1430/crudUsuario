@@ -2,9 +2,9 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../../database/prisma';
 
 import { verifyAccessToken } from '../../modules/auth/token.service';
-
-// ✅ NOVO IMPORT
 import { isBlacklisted } from '../../modules/auth/tokenBlacklist.service';
+
+import { JwtPayload } from 'jsonwebtoken';
 
 export const authMiddleware = async (
   req: Request,
@@ -52,9 +52,10 @@ export const authMiddleware = async (
     }
 
     // 🔍 Valida token
-    const decoded = verifyAccessToken(token);
+    const decoded = verifyAccessToken(token) as JwtPayload;
 
-    const userId = Number(decoded.sub);
+    const userId = decoded.sub ? Number(decoded.sub) : null;
+    const roleFromToken = decoded.role as string | undefined;
 
     if (!userId) {
       return res.status(401).json({
@@ -63,7 +64,7 @@ export const authMiddleware = async (
       });
     }
 
-    // 🔎 Busca usuário no banco
+    // 🔎 Busca usuário no banco (SEGURANÇA)
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
@@ -85,11 +86,11 @@ export const authMiddleware = async (
     // ✅ Injeta user no request
     (req as any).user = {
       id: user.id,
-      role: user.role,
+      role: roleFromToken || user.role,
     };
 
     return next();
-  } catch (error) {
+  } catch {
     return res.status(401).json({
       success: false,
       error: 'Token inválido ou expirado',

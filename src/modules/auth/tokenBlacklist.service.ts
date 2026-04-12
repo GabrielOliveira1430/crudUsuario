@@ -10,15 +10,29 @@ function getTTL(exp: number) {
 
 // 🚫 adicionar token na blacklist
 export async function blacklistToken(token: string, exp: number) {
-  const ttl = getTTL(exp);
+  try {
+    const ttl = getTTL(exp);
 
-  if (ttl > 0) {
+    // 🔒 evita salvar token já expirado
+    if (ttl <= 0) return;
+
     await redis.set(`${PREFIX}${token}`, '1', 'EX', ttl);
+  } catch (error) {
+    console.error('Erro ao adicionar token na blacklist:', error);
+    // não quebra o fluxo (segurança resiliente)
   }
 }
 
 // 🔎 verificar se token está bloqueado
 export async function isBlacklisted(token: string) {
-  const exists = await redis.get(`${PREFIX}${token}`);
-  return !!exists;
+  try {
+    const exists = await redis.get(`${PREFIX}${token}`);
+    return !!exists;
+  } catch (error) {
+    console.error('Erro ao verificar blacklist:', error);
+
+    // 🔒 fallback seguro:
+    // se Redis falhar, bloqueia o acesso
+    return true;
+  }
 }

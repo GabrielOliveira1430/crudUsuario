@@ -5,9 +5,14 @@ import morgan from 'morgan';
 
 import userRoutes from './modules/users/user.routes';
 import authRoutes from './modules/auth/auth.routes';
+import auditRoutes from './modules/audit/audit.routes';
+import securityRoutes from './modules/security/security.routes';
+
 import { swaggerSetup } from './shared/config/swagger';
 import { errorMiddleware } from './shared/middlewares/error.middleware';
 import { globalLimiter } from './shared/middlewares/rateLimit.middleware';
+import { auditMiddleware } from './shared/middlewares/audit.middleware';
+import { blockMiddleware } from './shared/middlewares/block.middleware';
 
 const app = express();
 
@@ -20,20 +25,35 @@ app.use(helmet());
 // 📊 Logs
 app.use(morgan('dev'));
 
-// 🚧 Rate limit global (DESATIVADO TEMPORARIAMENTE)
+// 🚧 Rate limit global (opcional)
 // app.use(globalLimiter);
+
+// 🔥 BLOQUEIO GLOBAL (ANTES DAS ROTAS)
+app.use(blockMiddleware);
 
 // 📘 Swagger
 swaggerSetup(app);
 
-// 🛣 Rotas
-app.use('/api/v1/users', userRoutes);
-app.use('/api/v1/auth', authRoutes);
+// 🛣 ROTAS (AGRUPADAS)
+const routes = express.Router();
 
-// 🔍 Health check (opcional mas útil)
+routes.use('/users', userRoutes);
+routes.use('/auth', authRoutes);
+routes.use('/audit-logs', auditRoutes);
+
+// 🔥 SECURITY ROUTES (ADICIONADO CORRETAMENTE)
+routes.use('/security', securityRoutes);
+
+// base path da API
+app.use('/api/v1', routes);
+
+// 🔍 Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
+
+// 🔥 AUDITORIA GLOBAL (DEPOIS DAS ROTAS)
+app.use(auditMiddleware);
 
 // ⚠️ Middleware de erro (SEMPRE O ÚLTIMO)
 app.use(errorMiddleware);

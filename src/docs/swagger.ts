@@ -2,7 +2,7 @@ import { userPaths } from './paths/users.path';
 import { authPaths } from './paths/auth.path';
 
 import { userSchemas } from './schemas/user.docs';
-import { authSchemas } from './schemas/auth.docs'; // ✅ IMPORTANTE
+import { authSchemas } from './schemas/auth.docs';
 
 export const swaggerDocument = {
   openapi: '3.0.0',
@@ -10,12 +10,13 @@ export const swaggerDocument = {
   info: {
     title: 'API Profissional',
     version: '1.0.0',
-    description: 'API de usuários e autenticação',
+    description: 'API de usuários e autenticação com segurança avançada',
   },
 
   servers: [
     {
       url: 'http://localhost:3000/api/v1',
+      description: 'Servidor local',
     },
   ],
 
@@ -41,12 +42,13 @@ export const swaggerDocument = {
         type: 'http',
         scheme: 'bearer',
         bearerFormat: 'JWT',
+        description: 'Insira o token JWT no formato: Bearer {token}',
       },
     },
 
     schemas: {
       ...userSchemas,
-      ...authSchemas, // 🔥 ADICIONADO
+      ...authSchemas,
     },
   },
 

@@ -6,6 +6,7 @@ export const userPaths = {
     post: {
       tags: ['Users'],
       summary: 'Criar usuário',
+      description: 'Cria um novo usuário no sistema',
       requestBody: {
         required: true,
         content: {
@@ -21,83 +22,77 @@ export const userPaths = {
     },
 
     /**
-     * 🔐 LISTAR USUÁRIOS (ADMIN)
+     * 🔐 LISTAR USUÁRIOS (RBAC)
      */
     get: {
       tags: ['Users'],
       summary: 'Listar usuários (paginado com filtros)',
+      description: 'Requer permissão: user:read',
       security: [{ bearerAuth: [] }],
       parameters: [
         {
           name: 'page',
           in: 'query',
-          required: false,
           schema: { type: 'integer', example: 1 }
         },
         {
           name: 'limit',
           in: 'query',
-          required: false,
           schema: { type: 'integer', example: 10 }
         },
         {
           name: 'name',
           in: 'query',
-          required: false,
           schema: { type: 'string', example: 'gabriel' },
           description: 'Filtrar por nome (busca parcial)'
         },
         {
           name: 'email',
           in: 'query',
-          required: false,
           schema: { type: 'string', example: 'email.com' },
           description: 'Filtrar por email (busca parcial)'
         },
         {
           name: 'search',
           in: 'query',
-          required: false,
           schema: { type: 'string', example: 'gabriel' },
           description: 'Busca por nome OU email'
         },
         {
           name: 'startDate',
           in: 'query',
-          required: false,
           schema: { type: 'string', example: '2026-01-01' },
           description: 'Data inicial'
         },
         {
           name: 'endDate',
           in: 'query',
-          required: false,
           schema: { type: 'string', example: '2026-12-31' },
           description: 'Data final'
         },
         {
           name: 'sort',
           in: 'query',
-          required: false,
           schema: { type: 'string', example: 'name:asc' },
           description: 'Ordenação (ex: name:asc, createdAt:desc)'
         }
       ],
       responses: {
-        200: { description: 'Lista de usuários' },
-        401: { description: 'Não autorizado' },
-        403: { description: 'Acesso negado' }
+        200: { description: 'Lista de usuários retornada com sucesso' },
+        401: { description: 'Não autenticado' },
+        403: { description: 'Sem permissão (user:read)' }
       }
     }
   },
 
   /**
-   * 🔓 LOGIN
+   * 🔓 LOGIN (LEGADO - opcional remover depois)
    */
   '/users/login': {
     post: {
       tags: ['Users'],
-      summary: 'Login',
+      summary: 'Login (legado)',
+      description: 'Recomendado usar /auth/login',
       requestBody: {
         required: true,
         content: {
@@ -142,18 +137,19 @@ export const userPaths = {
             }
           }
         },
-        401: { description: 'Não autorizado' }
+        401: { description: 'Não autenticado' }
       }
     }
   },
 
   /**
-   * 🔐 BUSCAR USUÁRIO POR ID (ADMIN)
+   * 🔐 OPERAÇÕES POR ID
    */
   '/users/{id}': {
     get: {
       tags: ['Users'],
       summary: 'Buscar usuário por ID',
+      description: 'Requer permissão: user:read',
       security: [{ bearerAuth: [] }],
       parameters: [
         {
@@ -165,16 +161,16 @@ export const userPaths = {
       ],
       responses: {
         200: { description: 'Usuário encontrado' },
+        401: { description: 'Não autenticado' },
+        403: { description: 'Sem permissão' },
         404: { description: 'Usuário não encontrado' }
       }
     },
 
-    /**
-     * 🔐 ATUALIZAR USUÁRIO
-     */
     put: {
       tags: ['Users'],
       summary: 'Atualizar usuário',
+      description: 'Requer permissão: user:update',
       security: [{ bearerAuth: [] }],
       parameters: [
         {
@@ -193,17 +189,16 @@ export const userPaths = {
         }
       },
       responses: {
-        200: { description: 'Usuário atualizado' },
-        400: { description: 'Dados inválidos' }
+        200: { description: 'Usuário atualizado com sucesso' },
+        400: { description: 'Dados inválidos' },
+        403: { description: 'Sem permissão (user:update)' }
       }
     },
 
-    /**
-     * 🔐 DELETAR USUÁRIO (ADMIN)
-     */
     delete: {
       tags: ['Users'],
       summary: 'Deletar usuário',
+      description: 'Requer permissão: user:delete',
       security: [{ bearerAuth: [] }],
       parameters: [
         {
@@ -214,8 +209,8 @@ export const userPaths = {
         }
       ],
       responses: {
-        200: { description: 'Usuário deletado' },
-        403: { description: 'Acesso negado' }
+        200: { description: 'Usuário deletado com sucesso' },
+        403: { description: 'Sem permissão (user:delete)' }
       }
     }
   }
