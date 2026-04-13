@@ -7,6 +7,12 @@ jest.mock('../database/prisma', () => ({
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn()
+    },
+    refreshToken: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      delete: jest.fn(),
+      deleteMany: jest.fn()
     }
   }
 }));
@@ -23,7 +29,8 @@ jest.mock('../shared/config/redis', () => ({
 // mocks globais úteis
 jest.mock('jsonwebtoken', () => ({
   sign: jest.fn(() => 'fake-token'),
-  verify: jest.fn()
+  verify: jest.fn(() => ({ sub: '1' })), // 🔥 importante pro refresh
+  decode: jest.fn(() => ({ exp: Math.floor(Date.now() / 1000) + 1000 }))
 }));
 
 jest.mock('bcrypt', () => ({

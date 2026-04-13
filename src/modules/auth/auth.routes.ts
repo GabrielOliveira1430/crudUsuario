@@ -27,7 +27,7 @@ const router = Router();
  * 🔐 AUTH (CENTRALIZADO)
  */
 
-// 🔐 LOGIN (único ponto de entrada)
+// 🔐 LOGIN
 router.post(
   '/login',
   ipBlockMiddleware,

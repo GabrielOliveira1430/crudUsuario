@@ -1,12 +1,10 @@
 import bcrypt from 'bcrypt';
 import prisma from '../../database/prisma';
 import crypto from 'crypto';
-
 import {
   generateAccessToken,
   generateRefreshToken,
 } from './token.service';
-
 import { MailService } from '../mail/mail.service';
 
 const mailService = new MailService();

@@ -6,13 +6,29 @@ import { AppError } from '../../shared/errors/AppError';
 
 const SALT_ROUNDS = 10;
 
+type Filters = {
+  name?: string;
+  email?: string;
+  search?: string;
+  startDate?: string;
+  endDate?: string;
+  sort?: string;
+};
+
+type UpdateUserDTO = {
+  name?: string;
+  email?: string;
+  password?: string;
+  role?: string;
+};
+
 /**
  * Criar usuário
  */
 export const create = async (data: CreateUserDTO) => {
   const exists = await prisma.user.findUnique({
     where: { email: data.email },
-    select: { id: true }
+    select: { id: true },
   });
 
   if (exists) {
@@ -26,15 +42,15 @@ export const create = async (data: CreateUserDTO) => {
       name: data.name,
       email: data.email,
       password: hashedPassword,
-      role: data.role
+      role: data.role,
     },
     select: {
       id: true,
       name: true,
       email: true,
       role: true,
-      createdAt: true
-    }
+      createdAt: true,
+    },
   });
 
   return user;
@@ -51,8 +67,8 @@ export const getProfile = async (userId: number) => {
       name: true,
       email: true,
       role: true,
-      createdAt: true
-    }
+      createdAt: true,
+    },
   });
 
   if (!user) {
@@ -63,74 +79,69 @@ export const getProfile = async (userId: number) => {
 };
 
 /**
- * Listar usuários com paginação + filtros avançados
+ * Listar usuários com paginação + filtros
  */
 export const getAll = async (
   page: number,
   limit: number,
-  filters?: {
-    name?: string;
-    email?: string;
-    search?: string;
-    startDate?: string;
-    endDate?: string;
-    sort?: string;
-  }
+  filters?: Filters
 ) => {
   const skip = (page - 1) * limit;
 
-  const where: any = {
-    AND: []
-  };
+  const where: any = { AND: [] };
 
+  // 🔍 busca geral
   if (filters?.search) {
     where.AND.push({
       OR: [
         {
           name: {
             contains: filters.search,
-            mode: 'insensitive'
-          }
+            mode: 'insensitive',
+          },
         },
         {
           email: {
             contains: filters.search,
-            mode: 'insensitive'
-          }
-        }
-      ]
+            mode: 'insensitive',
+          },
+        },
+      ],
     });
   }
 
+  // 🔍 filtro por nome
   if (filters?.name) {
     where.AND.push({
       name: {
         contains: filters.name,
-        mode: 'insensitive'
-      }
+        mode: 'insensitive',
+      },
     });
   }
 
+  // 🔍 filtro por email
   if (filters?.email) {
     where.AND.push({
       email: {
         contains: filters.email,
-        mode: 'insensitive'
-      }
+        mode: 'insensitive',
+      },
     });
   }
 
+  // 🔍 filtro por data
   if (filters?.startDate || filters?.endDate) {
     where.AND.push({
       createdAt: {
         gte: filters.startDate ? new Date(filters.startDate) : undefined,
-        lte: filters.endDate ? new Date(filters.endDate) : undefined
-      }
+        lte: filters.endDate ? new Date(filters.endDate) : undefined,
+      },
     });
   }
 
+  // 🔃 ordenação segura
   const allowedSortFields = ['name', 'email', 'createdAt'];
-
   let orderBy: any = { createdAt: 'desc' };
 
   if (filters?.sort) {
@@ -138,7 +149,7 @@ export const getAll = async (
 
     if (allowedSortFields.includes(field)) {
       orderBy = {
-        [field]: order === 'asc' ? 'asc' : 'desc'
+        [field]: order === 'asc' ? 'asc' : 'desc',
       };
     }
   }
@@ -156,12 +167,12 @@ export const getAll = async (
         name: true,
         email: true,
         role: true,
-        createdAt: true
-      }
+        createdAt: true,
+      },
     }),
     prisma.user.count({
-      where: finalWhere
-    })
+      where: finalWhere,
+    }),
   ]);
 
   return {
@@ -170,8 +181,8 @@ export const getAll = async (
       total,
       page,
       perPage: limit,
-      lastPage: Math.ceil(total / limit)
-    }
+      lastPage: Math.ceil(total / limit),
+    },
   };
 };
 
@@ -186,8 +197,8 @@ export const getById = async (id: number) => {
       name: true,
       email: true,
       role: true,
-      createdAt: true
-    }
+      createdAt: true,
+    },
   });
 
   if (!user) {
@@ -200,20 +211,24 @@ export const getById = async (id: number) => {
 /**
  * Atualizar usuário
  */
-export const update = async (id: number, data: any) => {
+export const update = async (id: number, data: UpdateUserDTO) => {
   const exists = await prisma.user.findUnique({
     where: { id },
-    select: { id: true }
+    select: { id: true },
   });
 
   if (!exists) {
     throw new AppError('Usuário não encontrado', 404);
   }
 
-  const updateData = { ...data };
+  const updateData: any = { ...data };
 
+  // 🔐 hash de senha se existir
   if (updateData.password) {
-    updateData.password = await bcrypt.hash(updateData.password, SALT_ROUNDS);
+    updateData.password = await bcrypt.hash(
+      updateData.password,
+      SALT_ROUNDS
+    );
   }
 
   const updated = await prisma.user.update({
@@ -224,8 +239,8 @@ export const update = async (id: number, data: any) => {
       name: true,
       email: true,
       role: true,
-      updatedAt: true
-    }
+      updatedAt: true,
+    },
   });
 
   return updated;
@@ -237,7 +252,7 @@ export const update = async (id: number, data: any) => {
 export const remove = async (id: number) => {
   const exists = await prisma.user.findUnique({
     where: { id },
-    select: { id: true }
+    select: { id: true },
   });
 
   if (!exists) {
@@ -245,7 +260,7 @@ export const remove = async (id: number) => {
   }
 
   await prisma.user.delete({
-    where: { id }
+    where: { id },
   });
 
   return { message: 'Usuário deletado com sucesso' };

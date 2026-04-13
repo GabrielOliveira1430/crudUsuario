@@ -51,10 +51,7 @@ export async function login(req: Request, res: Response) {
 
     return res.status(200).json({
       success: true,
-
-      // ✅ ADICIONADO PARA O TESTE
       message: result.message || 'Código 2FA enviado com sucesso',
-
       data: {
         message: result.message,
         security: {
@@ -67,7 +64,9 @@ export async function login(req: Request, res: Response) {
 
     return res.status(400).json({
       success: false,
+      message: error.message || 'Erro no login',
       error: error.message || 'Erro no login',
+      data: null,
     });
   }
 }
@@ -87,7 +86,9 @@ export async function verify2FA(req: Request, res: Response) {
   } catch (error: any) {
     return res.status(400).json({
       success: false,
+      message: error.message || 'Erro na verificação',
       error: error.message || 'Erro na verificação',
+      data: null,
     });
   }
 }
@@ -100,7 +101,9 @@ export async function refresh(req: Request, res: Response) {
     if (!refreshToken) {
       return res.status(400).json({
         success: false,
+        message: 'Refresh token obrigatório',
         error: 'Refresh token obrigatório',
+        data: null,
       });
     }
 
@@ -116,7 +119,9 @@ export async function refresh(req: Request, res: Response) {
     if (!storedToken) {
       return res.status(403).json({
         success: false,
+        message: 'Refresh token inválido',
         error: 'Refresh token inválido',
+        data: null,
       });
     }
 
@@ -127,7 +132,9 @@ export async function refresh(req: Request, res: Response) {
 
       return res.status(403).json({
         success: false,
+        message: 'Refresh token expirado',
         error: 'Refresh token expirado',
+        data: null,
       });
     }
 
@@ -143,7 +150,9 @@ export async function refresh(req: Request, res: Response) {
   } catch {
     return res.status(403).json({
       success: false,
+      message: 'Token inválido ou expirado',
       error: 'Token inválido ou expirado',
+      data: null,
     });
   }
 }
@@ -157,14 +166,18 @@ export async function logout(req: Request, res: Response) {
     if (!authHeader) {
       return res.status(400).json({
         success: false,
+        message: 'Token não fornecido',
         error: 'Token não fornecido',
+        data: null,
       });
     }
 
     if (!refreshToken) {
       return res.status(400).json({
         success: false,
+        message: 'Refresh token obrigatório',
         error: 'Refresh token obrigatório',
+        data: null,
       });
     }
 
@@ -186,7 +199,9 @@ export async function logout(req: Request, res: Response) {
   } catch {
     return res.status(500).json({
       success: false,
+      message: 'Erro ao fazer logout',
       error: 'Erro ao fazer logout',
+      data: null,
     });
   }
 }
@@ -206,7 +221,9 @@ export async function forgotPassword(req: Request, res: Response) {
   } catch (error: any) {
     return res.status(400).json({
       success: false,
+      message: error.message || 'Erro ao solicitar recuperação',
       error: error.message || 'Erro ao solicitar recuperação',
+      data: null,
     });
   }
 }
@@ -226,7 +243,9 @@ export async function resetPassword(req: Request, res: Response) {
   } catch (error: any) {
     return res.status(400).json({
       success: false,
+      message: error.message || 'Erro ao redefinir senha',
       error: error.message || 'Erro ao redefinir senha',
+      data: null,
     });
   }
 }
