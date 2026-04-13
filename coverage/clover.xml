@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage generated="1776047043273" clover="3.2.0">
-  <project timestamp="1776047043275" name="All files">
-    <metrics statements="733" coveredstatements="418" conditionals="273" coveredconditionals="89" methods="100" coveredmethods="38" elements="1106" coveredelements="545" complexity="0" loc="733" ncloc="733" packages="14" files="42" classes="42"/>
+<coverage generated="1776107444832" clover="3.2.0">
+  <project timestamp="1776107444833" name="All files">
+    <metrics statements="741" coveredstatements="461" conditionals="275" coveredconditionals="95" methods="100" coveredmethods="47" elements="1116" coveredelements="603" complexity="0" loc="741" ncloc="741" packages="14" files="42" classes="42"/>
     <package name="src">
       <metrics statements="47" coveredstatements="30" conditionals="4" coveredconditionals="0" methods="3" coveredmethods="0"/>
       <file name="app.ts" path="C:\Users\Gabriel\Desktop\TodasAPIs\crudUsuario\src\app.ts">
@@ -170,7 +170,7 @@
       </file>
     </package>
     <package name="src.modules.auth">
-      <metrics statements="228" coveredstatements="153" conditionals="80" coveredconditionals="33" methods="27" coveredmethods="15"/>
+      <metrics statements="235" coveredstatements="183" conditionals="80" coveredconditionals="37" methods="27" coveredmethods="21"/>
       <file name="auth.controller.ts" path="C:\Users\Gabriel\Desktop\TodasAPIs\crudUsuario\src\modules\auth\auth.controller.ts">
         <metrics statements="69" coveredstatements="51" conditionals="38" coveredconditionals="17" methods="7" coveredmethods="4"/>
         <line num="2" count="2" type="stmt"/>
@@ -370,18 +370,25 @@
         <line num="111" count="1" type="stmt"/>
       </file>
       <file name="permissionCache.service.ts" path="C:\Users\Gabriel\Desktop\TodasAPIs\crudUsuario\src\modules\auth\permissionCache.service.ts">
-        <metrics statements="11" coveredstatements="0" conditionals="2" coveredconditionals="0" methods="3" coveredmethods="0"/>
-        <line num="1" count="0" type="stmt"/>
-        <line num="3" count="0" type="stmt"/>
-        <line num="4" count="0" type="stmt"/>
-        <line num="6" count="0" type="stmt"/>
-        <line num="7" count="0" type="stmt"/>
-        <line num="9" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="11" count="0" type="stmt"/>
-        <line num="14" count="0" type="stmt"/>
-        <line num="15" count="0" type="stmt"/>
-        <line num="23" count="0" type="stmt"/>
-        <line num="24" count="0" type="stmt"/>
+        <metrics statements="18" coveredstatements="18" conditionals="2" coveredconditionals="2" methods="3" coveredmethods="3"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="4" count="1" type="stmt"/>
+        <line num="6" count="1" type="stmt"/>
+        <line num="7" count="4" type="stmt"/>
+        <line num="8" count="4" type="stmt"/>
+        <line num="10" count="3" type="cond" truecount="2" falsecount="0"/>
+        <line num="12" count="2" type="stmt"/>
+        <line num="14" count="2" type="stmt"/>
+        <line num="15" count="2" type="stmt"/>
+        <line num="19" count="1" type="stmt"/>
+        <line num="20" count="2" type="stmt"/>
+        <line num="21" count="2" type="stmt"/>
+        <line num="28" count="1" type="stmt"/>
+        <line num="33" count="1" type="stmt"/>
+        <line num="34" count="2" type="stmt"/>
+        <line num="35" count="2" type="stmt"/>
+        <line num="37" count="1" type="stmt"/>
       </file>
       <file name="token.service.ts" path="C:\Users\Gabriel\Desktop\TodasAPIs\crudUsuario\src\modules\auth\token.service.ts">
         <metrics statements="18" coveredstatements="12" conditionals="2" coveredconditionals="1" methods="4" coveredmethods="2"/>
@@ -405,44 +412,45 @@
         <line num="64" count="0" type="stmt"/>
       </file>
       <file name="tokenBlacklist.service.ts" path="C:\Users\Gabriel\Desktop\TodasAPIs\crudUsuario\src\modules\auth\tokenBlacklist.service.ts">
-        <metrics statements="16" coveredstatements="4" conditionals="2" coveredconditionals="0" methods="3" coveredmethods="0"/>
-        <line num="1" count="1" type="stmt"/>
-        <line num="3" count="1" type="stmt"/>
-        <line num="7" count="0" type="stmt"/>
-        <line num="8" count="0" type="stmt"/>
-        <line num="12" count="1" type="stmt"/>
-        <line num="13" count="0" type="stmt"/>
-        <line num="14" count="0" type="stmt"/>
-        <line num="17" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="19" count="0" type="stmt"/>
-        <line num="21" count="0" type="stmt"/>
-        <line num="27" count="1" type="stmt"/>
-        <line num="28" count="0" type="stmt"/>
-        <line num="29" count="0" type="stmt"/>
-        <line num="30" count="0" type="stmt"/>
-        <line num="32" count="0" type="stmt"/>
-        <line num="36" count="0" type="stmt"/>
+        <metrics statements="16" coveredstatements="16" conditionals="2" coveredconditionals="2" methods="3" coveredmethods="3"/>
+        <line num="1" count="2" type="stmt"/>
+        <line num="3" count="2" type="stmt"/>
+        <line num="7" count="3" type="stmt"/>
+        <line num="8" count="3" type="stmt"/>
+        <line num="12" count="2" type="stmt"/>
+        <line num="13" count="3" type="stmt"/>
+        <line num="14" count="3" type="stmt"/>
+        <line num="17" count="3" type="cond" truecount="2" falsecount="0"/>
+        <line num="19" count="2" type="stmt"/>
+        <line num="21" count="1" type="stmt"/>
+        <line num="27" count="2" type="stmt"/>
+        <line num="28" count="3" type="stmt"/>
+        <line num="29" count="3" type="stmt"/>
+        <line num="30" count="2" type="stmt"/>
+        <line num="32" count="1" type="stmt"/>
+        <line num="36" count="1" type="stmt"/>
       </file>
     </package>
     <package name="src.modules.mail">
-      <metrics statements="15" coveredstatements="3" conditionals="0" coveredconditionals="0" methods="4" coveredmethods="1"/>
+      <metrics statements="16" coveredstatements="16" conditionals="2" coveredconditionals="2" methods="4" coveredmethods="4"/>
       <file name="mail.service.ts" path="C:\Users\Gabriel\Desktop\TodasAPIs\crudUsuario\src\modules\mail\mail.service.ts">
-        <metrics statements="15" coveredstatements="3" conditionals="0" coveredconditionals="0" methods="4" coveredmethods="1"/>
-        <line num="1" count="1" type="stmt"/>
-        <line num="3" count="1" type="stmt"/>
-        <line num="4" count="2" type="stmt"/>
-        <line num="16" count="0" type="stmt"/>
-        <line num="17" count="0" type="stmt"/>
-        <line num="29" count="0" type="stmt"/>
-        <line num="30" count="0" type="stmt"/>
-        <line num="40" count="0" type="stmt"/>
-        <line num="41" count="0" type="stmt"/>
-        <line num="48" count="0" type="stmt"/>
-        <line num="49" count="0" type="stmt"/>
-        <line num="55" count="0" type="stmt"/>
-        <line num="56" count="0" type="stmt"/>
-        <line num="57" count="0" type="stmt"/>
-        <line num="59" count="0" type="stmt"/>
+        <metrics statements="16" coveredstatements="16" conditionals="2" coveredconditionals="2" methods="4" coveredmethods="4"/>
+        <line num="1" count="2" type="stmt"/>
+        <line num="3" count="2" type="stmt"/>
+        <line num="8" count="8" type="stmt"/>
+        <line num="23" count="2" type="stmt"/>
+        <line num="24" count="2" type="stmt"/>
+        <line num="36" count="1" type="stmt"/>
+        <line num="37" count="1" type="stmt"/>
+        <line num="43" count="2" type="stmt"/>
+        <line num="44" count="2" type="stmt"/>
+        <line num="51" count="1" type="stmt"/>
+        <line num="52" count="1" type="stmt"/>
+        <line num="58" count="2" type="stmt"/>
+        <line num="59" count="2" type="stmt"/>
+        <line num="60" count="1" type="stmt"/>
+        <line num="62" count="1" type="stmt"/>
+        <line num="63" count="1" type="stmt"/>
       </file>
     </package>
     <package name="src.modules.security">
