@@ -28,3 +28,13 @@ export const refreshTokenRequest = async (refreshToken: string) => {
 
   return response.data;
 };
+
+// 🔐 FUTURO RBAC (sem quebrar agora)
+export const getPermissions = async () => {
+  try {
+    const response = await api.get("/auth/permissions");
+    return response.data;
+  } catch {
+    return [];
+  }
+};

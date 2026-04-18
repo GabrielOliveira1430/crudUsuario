@@ -14,25 +14,28 @@ export default function Login({ onSuccess }: LoginProps) {
   const [password, setPassword] = useState("");
 
   const handleLogin = () => {
+    if (!email.trim() || !password.trim()) {
+      alert("Preencha email e senha");
+      return;
+    }
+
     mutate(
       { email, password },
       {
         onSuccess: () => {
-          // 🔥 SALVA EMAIL (ESSENCIAL)
           localStorage.setItem("auth_email", email);
-
-          // opcional (caso ainda use em outro lugar)
           onSuccess?.(email);
-
-          // 🔥 REDIRECIONA
           navigate("/verify-2fa");
+        },
+        onError: () => {
+          alert("Credenciais inválidas");
         },
       }
     );
   };
 
   return (
-    <div>
+    <div style={{ padding: 20 }}>
       <h1>Login</h1>
 
       <input
@@ -41,12 +44,16 @@ export default function Login({ onSuccess }: LoginProps) {
         onChange={(e) => setEmail(e.target.value)}
       />
 
+      <br /><br />
+
       <input
         placeholder="Senha"
         type="password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
+
+      <br /><br />
 
       <button onClick={handleLogin} disabled={isPending}>
         {isPending ? "Entrando..." : "Entrar"}

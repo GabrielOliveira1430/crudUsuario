@@ -1,35 +1,39 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
+
 import Login from "../pages/Login";
 import Verify2FA from "../pages/Verify2FA";
 import Dashboard from "../pages/Dashboard";
+import Profile from "../pages/Profile";
+import Admin from "../pages/Admin";
+
 import PrivateRoute from "./PrivateRoute";
-import { useState } from "react";
+import RoleRoute from "./RoleRoute";
+import MainLayout from "../layouts/MainLayout";
 
-export const AppRoutes = () => {
-  const [email, setEmail] = useState<string | null>(null);
-
+export default function AppRoutes() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* 🔐 LOGIN */}
-        <Route path="/" element={<Login onSuccess={setEmail} />} />
+    <Routes>
+      {/* 🔓 PÚBLICAS */}
+      <Route path="/" element={<Login />} />
+      <Route path="/verify-2fa" element={<Verify2FA />} />
 
-        {/* 🔢 2FA */}
-        <Route
-          path="/verify-2fa"
-          element={<Verify2FA email={email} />}
-        />
+      {/* 🔒 USUÁRIO LOGADO */}
+      <Route element={<PrivateRoute />}>
+        <Route element={<MainLayout />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/profile" element={<Profile />} />
+        </Route>
+      </Route>
 
-        {/* 🛡️ ROTA PROTEGIDA */}
-        <Route
-          path="/dashboard"
-          element={
-            <PrivateRoute>
-              <Dashboard />
-            </PrivateRoute>
-          }
-        />
-      </Routes>
-    </BrowserRouter>
+      {/* 🔐 ADMIN */}
+      <Route element={<RoleRoute roles={["ADMIN"]} />}>
+        <Route element={<MainLayout />}>
+          <Route path="/admin" element={<Admin />} />
+        </Route>
+      </Route>
+
+      {/* fallback */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
-};
+}

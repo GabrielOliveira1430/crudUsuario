@@ -36,14 +36,14 @@ export const me = async (req: Request, res: Response) => {
 };
 
 /**
- * Listar usuários com paginação + filtros avançados + meta
+ * 🔥 LISTAR USUÁRIOS (CORRIGIDO)
  */
 export const getUsers = async (req: Request, res: Response) => {
   try {
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 10;
 
-    const users = await service.getAll(page, limit, {
+    const result = await service.getAll(page, limit, {
       name: req.query.name as string,
       email: req.query.email as string,
       search: req.query.search as string,
@@ -54,8 +54,13 @@ export const getUsers = async (req: Request, res: Response) => {
 
     return res.json({
       success: true,
-      data: users.data,
-      meta: users.meta
+      data: {
+        users: result.users,
+        total: result.total,
+        page: result.page,
+        perPage: result.perPage,
+        lastPage: result.lastPage,
+      }
     });
   } catch (err: any) {
     return res.status(400).json({ error: err.message });
@@ -109,6 +114,22 @@ export const deleteUser = async (req: Request, res: Response) => {
     return res.json({
       success: true,
       data: result
+    });
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message });
+  }
+};
+
+/**
+ * 📊 STATS (DASHBOARD)
+ */
+export const stats = async (req: Request, res: Response) => {
+  try {
+    const data = await service.getUserStats();
+
+    return res.json({
+      success: true,
+      data,
     });
   } catch (err: any) {
     return res.status(400).json({ error: err.message });

@@ -1,12 +1,12 @@
 import api from "./api";
 
-// 🔐 PEGAR USUÁRIO LOGADO
+// 🔐 USUÁRIO LOGADO
 export const getMe = async () => {
-  const response = await api.get("/users/me");
-  return response.data;
+  const { data } = await api.get("/users/me");
+  return data ?? null;
 };
 
-// 📊 LISTAGEM (já usada no dashboard)
+// 📊 LISTAGEM
 export const getUsers = async ({
   page,
   limit,
@@ -16,9 +16,40 @@ export const getUsers = async ({
   limit: number;
   search: string;
 }) => {
-  const response = await api.get("/users", {
+  const { data } = await api.get("/users", {
     params: { page, limit, search },
   });
 
-  return response.data;
+  return (
+    data ?? {
+      users: [],
+      total: 0,
+      page: 1,
+      lastPage: 1,
+    }
+  );
+};
+
+// 📈 STATS
+export const getUserStats = async () => {
+  const { data } = await api.get("/users/stats");
+
+  return (
+    data ?? {
+      growth: [],
+      roles: { ADMIN: 0, USER: 0 },
+    }
+  );
+};
+
+// ✏️ UPDATE
+export const updateUser = async (id: number, body: any) => {
+  const { data } = await api.put(`/users/${id}`, body);
+  return data;
+};
+
+// 🗑️ DELETE
+export const deleteUser = async (id: number) => {
+  const { data } = await api.delete(`/users/${id}`);
+  return data;
 };

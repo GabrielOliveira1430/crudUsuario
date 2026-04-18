@@ -89,6 +89,9 @@ export const authMiddleware = async (
       role: roleFromToken || user.role,
     };
 
+    // 🧠 LOG PARA DEBUG
+    console.log('USER DO TOKEN:', (req as any).user);
+
     return next();
   } catch {
     return res.status(401).json({

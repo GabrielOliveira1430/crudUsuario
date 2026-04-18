@@ -4,24 +4,28 @@ const api = axios.create({
   baseURL: "http://localhost:3000/api/v1",
 });
 
+// 🔐 REQUEST INTERCEPTOR
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("accessToken");
 
-  if (token) {
+  if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
   return config;
 });
 
-// 🔥 INTERCEPTOR DE RESPOSTA (AQUI É A MAGIA)
+// 🔁 RESPONSE INTERCEPTOR (REFRESH TOKEN)
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // Se deu 401 e ainda não tentou refresh
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // 🔥 evita loop infinito
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry
+    ) {
       originalRequest._retry = true;
 
       try {
@@ -34,14 +38,18 @@ api.interceptors.response.use(
 
         const newAccessToken = response.data.data.accessToken;
 
+        // salva novo token
         localStorage.setItem("accessToken", newAccessToken);
 
-        // Atualiza header e refaz requisição
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        // atualiza header
+        if (originalRequest.headers) {
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        }
 
+        // refaz request original
         return api(originalRequest);
       } catch (err) {
-        // 🔥 SE REFRESH FALHAR → LOGOUT
+        // 🚨 logout forçado
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
 

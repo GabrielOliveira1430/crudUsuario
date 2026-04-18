@@ -9,7 +9,7 @@ export const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("accessToken");
 
-  if (token) {
+  if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
@@ -23,11 +23,8 @@ let failedQueue: any[] = [];
 // processa fila
 const processQueue = (error: any, token: string | null = null) => {
   failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
-    }
+    if (error) prom.reject(error);
+    else prom.resolve(token);
   });
 
   failedQueue = [];
@@ -40,25 +37,19 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // se erro não for 401 → ignora
     if (error.response?.status !== 401) {
       return Promise.reject(error);
     }
 
-    // evita loop infinito
     if (originalRequest._retry) {
       return Promise.reject(error);
     }
 
     originalRequest._retry = true;
 
-    // 🔒 se já está fazendo refresh → fila
     if (isRefreshing) {
       return new Promise((resolve, reject) => {
-        failedQueue.push({
-          resolve,
-          reject,
-        });
+        failedQueue.push({ resolve, reject });
       })
         .then((token) => {
           originalRequest.headers.Authorization = `Bearer ${token}`;
@@ -72,29 +63,24 @@ api.interceptors.response.use(
     try {
       const refreshToken = localStorage.getItem("refreshToken");
 
-      if (!refreshToken) {
-        throw new Error("Sem refresh token");
-      }
+      if (!refreshToken) throw new Error("Sem refresh token");
 
       const data = await refreshTokenRequest(refreshToken);
 
       const newAccessToken = data.data.accessToken;
       const newRefreshToken = data.data.refreshToken;
 
-      // salva novos tokens
       localStorage.setItem("accessToken", newAccessToken);
       localStorage.setItem("refreshToken", newRefreshToken);
 
       processQueue(null, newAccessToken);
 
-      // refaz request original
       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
       return api(originalRequest);
     } catch (err) {
       processQueue(err, null);
 
-      // 🔥 logout automático
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
 

@@ -1,5 +1,6 @@
 import prisma from '../../database/prisma';
 import bcrypt from 'bcrypt';
+import { Role } from '@prisma/client';
 
 import { CreateUserDTO } from './user.types';
 import { AppError } from '../../shared/errors/AppError';
@@ -19,11 +20,11 @@ type UpdateUserDTO = {
   name?: string;
   email?: string;
   password?: string;
-  role?: string;
+  role?: Role;
 };
 
 /**
- * Criar usuário
+ * 🔐 Criar usuário (SEGURO)
  */
 export const create = async (data: CreateUserDTO) => {
   const exists = await prisma.user.findUnique({
@@ -35,6 +36,12 @@ export const create = async (data: CreateUserDTO) => {
     throw new AppError('Email já existe', 400);
   }
 
+  let role: Role = Role.USER;
+
+  if (data.role === Role.ADMIN) {
+    throw new AppError('Não é permitido criar ADMIN diretamente', 403);
+  }
+
   const hashedPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
 
   const user = await prisma.user.create({
@@ -42,7 +49,7 @@ export const create = async (data: CreateUserDTO) => {
       name: data.name,
       email: data.email,
       password: hashedPassword,
-      role: data.role,
+      role,
     },
     select: {
       id: true,
@@ -79,7 +86,7 @@ export const getProfile = async (userId: number) => {
 };
 
 /**
- * Listar usuários com paginação + filtros
+ * 🔥 LISTAGEM CORRIGIDA (PADRÃO FRONTEND)
  */
 export const getAll = async (
   page: number,
@@ -90,7 +97,6 @@ export const getAll = async (
 
   const where: any = { AND: [] };
 
-  // 🔍 busca geral
   if (filters?.search) {
     where.AND.push({
       OR: [
@@ -110,7 +116,6 @@ export const getAll = async (
     });
   }
 
-  // 🔍 filtro por nome
   if (filters?.name) {
     where.AND.push({
       name: {
@@ -120,7 +125,6 @@ export const getAll = async (
     });
   }
 
-  // 🔍 filtro por email
   if (filters?.email) {
     where.AND.push({
       email: {
@@ -130,7 +134,6 @@ export const getAll = async (
     });
   }
 
-  // 🔍 filtro por data
   if (filters?.startDate || filters?.endDate) {
     where.AND.push({
       createdAt: {
@@ -140,7 +143,6 @@ export const getAll = async (
     });
   }
 
-  // 🔃 ordenação segura
   const allowedSortFields = ['name', 'email', 'createdAt'];
   let orderBy: any = { createdAt: 'desc' };
 
@@ -175,14 +177,13 @@ export const getAll = async (
     }),
   ]);
 
+  // 🔥 AQUI ESTÁ A CORREÇÃO
   return {
-    data: users,
-    meta: {
-      total,
-      page,
-      perPage: limit,
-      lastPage: Math.ceil(total / limit),
-    },
+    users,
+    total,
+    page,
+    perPage: limit,
+    lastPage: Math.ceil(total / limit),
   };
 };
 
@@ -209,7 +210,7 @@ export const getById = async (id: number) => {
 };
 
 /**
- * Atualizar usuário
+ * 🔐 Atualizar usuário
  */
 export const update = async (id: number, data: UpdateUserDTO) => {
   const exists = await prisma.user.findUnique({
@@ -223,7 +224,10 @@ export const update = async (id: number, data: UpdateUserDTO) => {
 
   const updateData: any = { ...data };
 
-  // 🔐 hash de senha se existir
+  if (updateData.role) {
+    throw new AppError('Alteração de role não permitida', 403);
+  }
+
   if (updateData.password) {
     updateData.password = await bcrypt.hash(
       updateData.password,
@@ -265,3 +269,42 @@ export const remove = async (id: number) => {
 
   return { message: 'Usuário deletado com sucesso' };
 };
+
+/**
+ * 📊 STATS (já estava correto)
+ */
+export const getUserStats = async () => {
+  const users = await prisma.user.findMany({
+    select: {
+      role: true,
+      createdAt: true,
+    },
+  });
+
+  const growthMap: Record<string, number> = {};
+
+  users.forEach((user) => {
+    const date = new Date(user.createdAt);
+    const month = date.toLocaleString('pt-BR', { month: 'short' });
+
+    growthMap[month] = (growthMap[month] || 0) + 1;
+  });
+
+  const growth = Object.entries(growthMap).map(([month, total]) => ({
+    name: month,
+    users: total,
+  }));
+
+  const roles = {
+    ADMIN: users.filter((u) => u.role === Role.ADMIN).length,
+    USER: users.filter((u) => u.role === Role.USER).length,
+  };
+
+  return {
+    growth,
+    roles,
+  };
+
+  
+};
+

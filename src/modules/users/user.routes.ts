@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { Role } from '@prisma/client';
 
 import {
   createUser,
@@ -6,7 +7,8 @@ import {
   getUsers,
   getUser,
   updateUser,
-  deleteUser
+  deleteUser,
+  stats
 } from './user.controller';
 
 import { authMiddleware } from '../../shared/middlewares/auth.middleware';
@@ -45,13 +47,24 @@ router.get('/protected', authMiddleware, (req, res) => {
 router.get('/me', authMiddleware, me);
 
 /**
- * 🔐 ADMIN (ROLE - opcional manter)
+ * 🔥 STATS (DASHBOARD)
+ * ✔ Mantém permission + reforça com role correta
  */
+router.get(
+  '/stats',
+  authMiddleware,
+  roleMiddleware(Role.ADMIN), // ✅ CORRIGIDO
+  permissionMiddleware('user:read'),
+  stats
+);
 
+/**
+ * 🔐 ADMIN
+ */
 router.get(
   '/admin',
   authMiddleware,
-  roleMiddleware('ADMIN'),
+  roleMiddleware(Role.ADMIN), // ✅ CORRIGIDO
   (req, res) => {
     return res.json({ message: 'Área admin' });
   }
@@ -65,6 +78,7 @@ router.get(
 router.get(
   '/',
   authMiddleware,
+  roleMiddleware(Role.ADMIN), // ✅ CORRIGIDO
   permissionMiddleware('user:read'),
   getUsers
 );
@@ -73,6 +87,7 @@ router.get(
 router.get(
   '/:id',
   authMiddleware,
+  roleMiddleware(Role.ADMIN), // ✅ CORRIGIDO
   permissionMiddleware('user:read'),
   getUser
 );
@@ -81,6 +96,7 @@ router.get(
 router.put(
   '/:id',
   authMiddleware,
+  roleMiddleware(Role.ADMIN), // ✅ CORRIGIDO
   permissionMiddleware('user:update'),
   validate(updateUserSchema),
   updateUser
@@ -90,6 +106,7 @@ router.put(
 router.delete(
   '/:id',
   authMiddleware,
+  roleMiddleware(Role.ADMIN), // ✅ CORRIGIDO
   permissionMiddleware('user:delete'),
   deleteUser
 );

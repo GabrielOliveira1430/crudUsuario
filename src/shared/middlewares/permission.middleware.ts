@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../../database/prisma';
-import {redis} from '../config/redis';
+import { redis } from '../config/redis';
+import { Role } from '@prisma/client';
 
 const CACHE_PREFIX = 'permissions:';
 const CACHE_TTL = 60 * 10; // 10 minutos
@@ -17,20 +18,20 @@ export function permissionMiddleware(permissionName: string) {
         });
       }
 
-      const role = user.role;
+      const role = user.role as Role;
       const cacheKey = CACHE_PREFIX + role;
 
-      // 🔥 1. TENTA PEGAR DO REDIS
-      let permissions: string[] | null = null;
+      let permissions: string[] = [];
 
+      // 🔥 1. TENTA PEGAR DO REDIS
       const cached = await redis.get(cacheKey);
 
       if (cached) {
         permissions = JSON.parse(cached);
       }
 
-      // 🔥 2. SE NÃO EXISTIR → BUSCA NO BANCO
-      if (!permissions) {
+      // 🔥 2. SE VAZIO → BUSCA NO BANCO
+      if (!permissions || permissions.length === 0) {
         const rolePermissions = await prisma.rolePermission.findMany({
           where: { role },
           include: {
@@ -40,16 +41,25 @@ export function permissionMiddleware(permissionName: string) {
 
         permissions = rolePermissions.map(rp => rp.permission.name);
 
-        // 🔥 salva no cache
-        await redis.set(
-          cacheKey,
-          JSON.stringify(permissions),
-          'EX',
-          CACHE_TTL
-        );
+        // 🔥 só salva se tiver dados
+        if (permissions.length > 0) {
+          await redis.set(
+            cacheKey,
+            JSON.stringify(permissions),
+            'EX',
+            CACHE_TTL
+          );
+        }
       }
 
-      // 🔥 3. VERIFICA PERMISSÃO
+      // 🧠 DEBUG
+      console.log({
+        role,
+        permissionRequired: permissionName,
+        permissionsLoaded: permissions,
+      });
+
+      // 🔥 3. VALIDA
       if (!permissions.includes(permissionName)) {
         return res.status(403).json({
           success: false,
@@ -58,7 +68,9 @@ export function permissionMiddleware(permissionName: string) {
       }
 
       return next();
-    } catch {
+    } catch (error) {
+      console.error('Erro no permissionMiddleware:', error);
+
       return res.status(500).json({
         success: false,
         error: 'Erro ao verificar permissão',

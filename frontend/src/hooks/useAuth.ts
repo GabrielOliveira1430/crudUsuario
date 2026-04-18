@@ -1,36 +1,67 @@
 import { useMutation } from "@tanstack/react-query";
 import { loginRequest, verify2FARequest } from "../services/auth.service";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth as useAuthContext } from "../context/AuthContext";
+import type { Permission } from "../types/auth.types";
 
-// 🔐 LOGIN (envia código 2FA)
+// 🔐 LOGIN
 export const useLogin = () => {
   return useMutation({
-    mutationFn: ({ email, password }: any) =>
+    mutationFn: ({ email, password }: { email: string; password: string }) =>
       loginRequest(email, password),
+
+    onSuccess: (_, variables) => {
+      localStorage.setItem("auth_email", variables.email);
+    },
   });
 };
 
-// 🔢 VERIFY 2FA (LOGIN REAL)
+// 🔢 VERIFY 2FA
 export const useVerify2FA = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login } = useAuthContext();
 
   return useMutation({
-    mutationFn: ({ email, code }: any) =>
+    mutationFn: ({ email, code }: { email: string; code: string }) =>
       verify2FARequest(email, code),
 
-    onSuccess: (response) => {
-      const { accessToken, refreshToken } = response.data;
+    onSuccess: async (response) => {
+      const accessToken = response?.data?.accessToken;
+      const refreshToken = response?.data?.refreshToken;
 
-      // 🔥 salva tokens no contexto/global
-      login(accessToken, refreshToken);
+      if (!accessToken || !refreshToken) {
+        throw new Error("Tokens inválidos");
+      }
 
-      // 🔥 limpa email temporário
+      await login(accessToken, refreshToken);
+
       localStorage.removeItem("auth_email");
 
-      // 🔥 redireciona
       navigate("/dashboard");
     },
   });
+};
+
+// 🔥 RBAC REAL (VERSÃO SEGURA)
+export const useAuth = () => {
+  const context = useAuthContext();
+
+  const can = (permission: Permission): boolean => {
+    const user = context.user;
+
+    if (!user) return false;
+
+    // 🔥 ADMIN bypass total
+    if (user.role === "ADMIN") return true;
+
+    // 🔥 garante array sempre
+    const permissions = user.permissions ?? [];
+
+    return permissions.includes(permission);
+  };
+
+  return {
+    ...context,
+    can,
+  };
 };
