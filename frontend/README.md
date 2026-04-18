@@ -1,73 +1,224 @@
-# React + TypeScript + Vite
+📄 README.md
+# 🚀 CRUD Usuários - SaaS Fullstack (RBAC + 2FA + Dashboard)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Sistema completo de gerenciamento de usuários com autenticação segura, controle de acesso (RBAC), dashboard interativo e painel administrativo.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 📌 Tecnologias
 
-## React Compiler
+### 🔧 Backend
+- Node.js
+- Express
+- TypeScript
+- Prisma ORM
+- PostgreSQL
+- JWT (Access + Refresh Token)
+- 2FA (Email)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 🎨 Frontend
+- React + Vite
+- TypeScript
+- React Query
+- Recharts (gráficos)
+- Framer Motion (animações)
+- Context API (Auth + RBAC)
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 🔐 Funcionalidades
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Autenticação
+- Login com email e senha
+- Verificação em 2 fatores (2FA)
+- Tokens (access + refresh)
+- Persistência de sessão
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### RBAC (Role-Based Access Control)
+- Usuário (`USER`)
+- Administrador (`ADMIN`)
+- Permissões dinâmicas
+- Proteção de rotas no frontend e backend
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+### Dashboard
+- Total de usuários
+- Usuários ativos
+- Quantidade de admins
+- Gráfico de crescimento
+- Gráfico de distribuição (admin vs user)
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Admin Panel
+- Listagem de usuários
+- Busca com debounce
+- Paginação
+- Ordenação (nome, email, role)
+- Editar usuário
+- Deletar usuário (com permissão)
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### UI/UX
+- Dark mode / Light mode
+- Skeleton loading (estilo SaaS)
+- Toasts dinâmicos
+- Layout moderno (sidebar + header)
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+---
+
+## 📂 Estrutura do Projeto
+
+
+crudUsuario/
+├── backend/
+│ ├── src/
+│ ├── prisma/
+│ └── ...
+│
+├── frontend/
+│ ├── src/
+│ │ ├── components/
+│ │ ├── pages/
+│ │ ├── hooks/
+│ │ ├── services/
+│ │ └── ...
+│
+└── README.md
+
+
+---
+
+## ⚙️ Como rodar o projeto
+
+### 🔧 Backend
+
+```bash
+cd backend
+
+# instalar dependências
+npm install
+
+# configurar ambiente
+cp .env.example .env
+
+# rodar migrations
+npx prisma migrate dev
+
+# popular banco (opcional)
+npx ts-node seed.ts
+
+# iniciar servidor
+npm run dev
+🎨 Frontend
+cd frontend
+
+# instalar dependências
+npm install
+
+# rodar projeto
+npm run dev
+🌐 Variáveis de Ambiente (Backend)
+
+Exemplo .env:
+
+DATABASE_URL=postgresql://user:password@localhost:5432/db
+JWT_SECRET=seu_secret
+EMAIL_HOST=smtp...
+EMAIL_USER=...
+EMAIL_PASS=...
+🔑 Permissões (RBAC)
+
+Exemplo de permissões:
+
+user.create
+user.read
+user.update
+user.delete
+
+👉 Admin possui todas automaticamente.
+
+📊 Endpoints principais
+Auth
+POST /auth/login
+POST /auth/verify-2fa
+Users
+GET /users
+GET /users/me
+PUT /users/:id
+DELETE /users/:id
+GET /users/stats
+🧠 Conceitos aplicados
+Clean Architecture (separação de camadas)
+RBAC (controle por role + permission)
+Optimistic UI (React Query)
+Debounce em busca
+UI baseada em estado (loading/skeleton)
+Tema dinâmico (dark/light)
+🚀 Próximos passos (melhorias)
+Deploy (Vercel + VPS)
+Upload de avatar
+Logs/Audit trail
+Cache com Redis
+Testes automatizados (Jest)
+👨‍💻 Autor
+
+Gabriel Oliveira
+
+
+---
+
+# 🧠 EXPLICAÇÃO SIMPLES DO QUE VOCÊ TEM
+
+Você construiu basicamente um **mini SaaS completo**.
+
+## 🔥 Backend
+Você tem:
+
+- Autenticação com **2FA**
+- Sistema de **roles (ADMIN / USER)**
+- Sistema de **permissões reais**
+- API estruturada (controller → service → middleware)
+
+👉 Isso já é arquitetura profissional.
+
+---
+
+## 🎨 Frontend
+Você tem:
+
+- Dashboard com métricas reais
+- Gráficos (crescimento + distribuição)
+- Tabela com:
+  - paginação
+  - busca
+  - ordenação
+- Tema dark/light
+- UI moderna (nível produto SaaS)
+
+---
+
+## 🔐 Segurança
+Você implementou:
+
+- JWT
+- Refresh token
+- Proteção de rota
+- RBAC no front e no back
+
+👉 Isso é exatamente o que empresas usam.
+
+---
+
+## ⚙️ Como usar (na prática)
+
+### 1. Rodar backend
+```bash
+cd backend
+npm run dev
+2. Rodar frontend
+cd frontend
+npm run dev
+3. Fluxo do sistema
+Login
+Recebe código 2FA
+Valida
+Entra no dashboard
+Admin acessa /admin
+Gerencia usuários
