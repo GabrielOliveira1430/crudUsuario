@@ -23,6 +23,7 @@ try {
       maxRetriesPerRequest: 3,
       enableReadyCheck: false,
       lazyConnect: false,
+      connectTimeout: 10000,
     });
 
     console.log('🟢 Tentando conectar via REDIS_URL...');
@@ -37,6 +38,7 @@ try {
       maxRetriesPerRequest: 3,
       enableReadyCheck: false,
       lazyConnect: false,
+      connectTimeout: 10000,
     });
 
     console.log('🟢 Tentando conectar via REDIS_HOST...');
@@ -44,15 +46,8 @@ try {
 
   // 🔥 LOCAL DEV
   else {
-    redis = new Redis({
-      host: '127.0.0.1',
-      port: 6379,
-      maxRetriesPerRequest: 3,
-      enableReadyCheck: false,
-      lazyConnect: false,
-    });
-
-    console.log('🟡 Redis local (localhost:6379)');
+    console.log('🟡 Redis desativado (sem configuração Railway)');
+    redis = null;
   }
 
   if (redis) {
@@ -73,7 +68,7 @@ try {
     });
   }
 } catch (error) {
-  console.error('🔴 Erro ao conectar no Redis:', error);
+  console.error('🔴 Erro ao configurar Redis:', error);
   redis = null;
 }
 
