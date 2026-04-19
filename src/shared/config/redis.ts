@@ -1,47 +1,25 @@
 import Redis from 'ioredis';
 
-let client: Redis | null = null;
+let redis: Redis;
 
 if (process.env.REDIS_URL) {
-  client = new Redis(process.env.REDIS_URL);
-
-  client.on('connect', () => {
-    console.log('🟢 Redis conectado');
-  });
-
-  client.on('error', (err: Error) => {
-    console.error('🔴 Redis erro:', err.message);
-  });
-
-  client.on('reconnecting', () => {
-    console.log('🟡 Redis reconectando...');
-  });
+  // 🚀 PRODUÇÃO (Railway)
+  redis = new Redis(process.env.REDIS_URL);
 } else {
-  console.log('🟡 Redis desativado (sem REDIS_URL)');
+  // 💻 LOCAL
+  redis = new Redis({
+    host: '127.0.0.1',
+    port: 6379,
+  });
 }
 
-// ✅ Wrapper seguro
-export const redis = {
-  async get(key: string) {
-    if (!client) return null;
-    return client.get(key);
-  },
+// logs
+redis.on('connect', () => {
+  console.log('🟢 Redis conectado');
+});
 
-  async set(key: string, value: string, ttl?: number) {
-    if (!client) return null;
-    if (ttl) {
-      return client.set(key, value, 'EX', ttl);
-    }
-    return client.set(key, value);
-  },
+redis.on('error', (err) => {
+  console.error('🔴 Redis erro:', err.message);
+});
 
-  async del(key: string) {
-    if (!client) return null;
-    return client.del(key);
-  },
-
-  async exists(key: string) {
-    if (!client) return false;
-    return client.exists(key);
-  }
-};
+export { redis };
