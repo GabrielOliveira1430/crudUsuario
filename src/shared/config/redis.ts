@@ -1,28 +1,25 @@
 import Redis from 'ioredis';
 
-// 🔧 CONFIGURAÇÃO
-export const redis = new Redis({
-  host: process.env.REDIS_HOST || '127.0.0.1',
-  port: Number(process.env.REDIS_PORT) || 6379,
+let redis: Redis | null = null;
 
-  // 🔄 RECONEXÃO AUTOMÁTICA
-  retryStrategy: (times: number) => {
-    const delay = Math.min(times * 50, 2000);
-    return delay;
-  },
-});
+// ✅ Só conecta se tiver URL EXPLÍCITA
+if (process.env.REDIS_URL) {
+  redis = new Redis(process.env.REDIS_URL);
 
-// ✅ CONECTADO
-redis.on('connect', () => {
-  console.log('🟢 Redis conectado');
-});
+  redis.on('connect', () => {
+    console.log('🟢 Redis conectado');
+  });
 
-// ❌ ERRO
-redis.on('error', (err: Error) => {
-  console.error('🔴 Redis erro:', err.message);
-});
+  redis.on('error', (err: Error) => {
+    console.error('🔴 Redis erro:', err.message);
+  });
 
-// 🔄 RECONNECT
-redis.on('reconnecting', () => {
-  console.log('🟡 Redis reconectando...');
-});
+  redis.on('reconnecting', () => {
+    console.log('🟡 Redis reconectando...');
+  });
+
+} else {
+  console.log('🟡 Redis desativado (sem REDIS_URL)');
+}
+
+export { redis };

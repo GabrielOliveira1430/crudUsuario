@@ -9,20 +9,29 @@ const PORT = process.env.PORT || 3000;
 // 🚀 Função de inicialização
 async function startServer() {
   try {
-    // ✅ Teste de conexão com Redis
-    await redis.set('test', 'ok');
-    const value = await redis.get('test');
+    // ✅ Teste de conexão com Redis (somente se existir)
+    if (redis) {
+      await redis.set('test', 'ok');
+      const value = await redis.get('test');
 
-    console.log('🟢 Redis conectado:', value);
+      console.log('🟢 Redis conectado:', value);
+    } else {
+      console.log('🟡 Redis não configurado');
+    }
 
     // ✅ Subir servidor
     app.listen(PORT, () => {
-      console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
-      console.log(`📘 Swagger em http://localhost:${PORT}/api-docs`);
+      console.log(`🚀 Servidor rodando na porta ${PORT}`);
+      console.log(`📘 Swagger em /api-docs`);
     });
+
   } catch (error) {
-    console.error('🔴 Erro ao conectar no Redis:', error);
-    process.exit(1);
+    console.error('🔴 Erro ao iniciar servidor:', error);
+
+    // ❗ NÃO derruba a aplicação por causa do Redis
+    app.listen(PORT, () => {
+      console.log(`🚀 Servidor rodando na porta ${PORT} (sem Redis)`);
+    });
   }
 }
 
