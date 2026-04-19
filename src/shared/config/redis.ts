@@ -3,54 +3,31 @@ import Redis from 'ioredis';
 let redis: Redis | null = null;
 
 /**
- * Railway + Local fallback seguro
+ * Railway-safe Redis config
  *
- * Ordem:
- * 1. REDIS_URL (preferencial no Railway)
- * 2. REDIS_HOST + REDIS_PORT + REDIS_PASSWORD
- * 3. Localhost (somente ambiente local)
+ * PRODUÇÃO:
+ * usa apenas REDIS_URL
+ *
+ * LOCAL:
+ * sem REDIS_URL → Redis desativado
+ *
+ * Isso evita crash no Railway e evita localhost indevido.
  */
 
 const redisUrl = process.env.REDIS_URL;
-const redisHost = process.env.REDIS_HOST;
-const redisPort = Number(process.env.REDIS_PORT || 6379);
-const redisPassword = process.env.REDIS_PASSWORD;
 
 try {
-  // 🔥 PRODUÇÃO (Railway normalmente usa REDIS_URL)
+  // 🔥 PRODUÇÃO (Railway)
   if (redisUrl) {
+    console.log('🟢 Usando REDIS_URL do Railway...');
+
     redis = new Redis(redisUrl, {
-      maxRetriesPerRequest: 3,
+      maxRetriesPerRequest: 1,
       enableReadyCheck: false,
       lazyConnect: false,
       connectTimeout: 10000,
     });
 
-    console.log('🟢 Tentando conectar via REDIS_URL...');
-  }
-
-  // 🔥 PRODUÇÃO alternativa (host + port + password)
-  else if (redisHost) {
-    redis = new Redis({
-      host: redisHost,
-      port: redisPort,
-      password: redisPassword,
-      maxRetriesPerRequest: 3,
-      enableReadyCheck: false,
-      lazyConnect: false,
-      connectTimeout: 10000,
-    });
-
-    console.log('🟢 Tentando conectar via REDIS_HOST...');
-  }
-
-  // 🔥 LOCAL DEV
-  else {
-    console.log('🟡 Redis desativado (sem configuração Railway)');
-    redis = null;
-  }
-
-  if (redis) {
     redis.on('connect', () => {
       console.log('🟢 Redis conectado');
     });
@@ -67,8 +44,17 @@ try {
       console.error('🔴 Redis erro:', err.message);
     });
   }
+
+  // 🔥 SEM REDIS LOCAL → não tenta localhost
+  else {
+    console.log('🟡 REDIS_URL não encontrada → Redis desativado');
+
+    redis = null;
+  }
 } catch (error) {
-  console.error('🔴 Erro ao configurar Redis:', error);
+  console.error('🔴 Falha ao iniciar Redis:', error);
+
+  // fallback seguro
   redis = null;
 }
 
