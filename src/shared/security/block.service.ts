@@ -1,4 +1,6 @@
-import {redis} from '../config/redis';
+// block.service.ts
+
+import { redis } from '../config/redis';
 
 const BLOCK_TIME = 60 * 10; // 10 min
 
@@ -11,6 +13,8 @@ const USER_WHITELIST = (id: number) => `whitelist:user:${id}`;
 
 // 🚫 BLOQUEIO
 export const blockIP = async (ip: string) => {
+  if (!redis) return;
+
   const isWhite = await redis.get(IP_WHITELIST(ip));
   if (isWhite) return;
 
@@ -18,6 +22,8 @@ export const blockIP = async (ip: string) => {
 };
 
 export const blockUser = async (userId: number) => {
+  if (!redis) return;
+
   const isWhite = await redis.get(USER_WHITELIST(userId));
   if (isWhite) return;
 
@@ -26,6 +32,9 @@ export const blockUser = async (userId: number) => {
 
 // 🔍 VERIFICA BLOQUEIO
 export const isBlocked = async (ip: string, userId?: number) => {
+  // 🔒 sem Redis → não bloqueia
+  if (!redis) return false;
+
   if (await redis.get(IP_WHITELIST(ip))) return false;
   if (userId && (await redis.get(USER_WHITELIST(userId)))) return false;
 
@@ -42,18 +51,26 @@ export const isBlocked = async (ip: string, userId?: number) => {
 
 // 🟢 WHITELIST
 export const whitelistIP = async (ip: string) => {
+  if (!redis) return;
+
   await redis.set(IP_WHITELIST(ip), '1');
 };
 
 export const whitelistUser = async (userId: number) => {
+  if (!redis) return;
+
   await redis.set(USER_WHITELIST(userId), '1');
 };
 
 // 🔓 DESBLOQUEIO
 export const unblockIP = async (ip: string) => {
+  if (!redis) return;
+
   await redis.del(IP_BLOCK(ip));
 };
 
 export const unblockUser = async (userId: number) => {
+  if (!redis) return;
+
   await redis.del(USER_BLOCK(userId));
 };

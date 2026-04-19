@@ -5,6 +5,9 @@ const TTL = 60 * 10; // 10 minutos
 
 export const getPermissionsFromCache = async (role: string) => {
   try {
+    // 🔒 fallback seguro caso Redis não esteja configurado
+    if (!redis) return null;
+
     const data = await redis.get(PREFIX + role);
 
     if (!data) return null;
@@ -16,8 +19,14 @@ export const getPermissionsFromCache = async (role: string) => {
   }
 };
 
-export const setPermissionsInCache = async (role: string, permissions: string[]) => {
+export const setPermissionsInCache = async (
+  role: string,
+  permissions: string[]
+) => {
   try {
+    // 🔒 não quebra se Redis estiver desativado
+    if (!redis) return;
+
     await redis.set(
       PREFIX + role,
       JSON.stringify(permissions),
@@ -32,6 +41,9 @@ export const setPermissionsInCache = async (role: string, permissions: string[])
 
 export const invalidatePermissionCache = async (role: string) => {
   try {
+    // 🔒 não quebra se Redis estiver desativado
+    if (!redis) return;
+
     await redis.del(PREFIX + role);
   } catch (error) {
     console.error('Erro ao invalidar cache de permissões:', error);

@@ -1,12 +1,20 @@
-import {redis} from '../../shared/config/redis';
+// security.service.ts
+
+import { redis } from '../../shared/config/redis';
 
 // 🔍 LISTAR BLOQUEADOS
 export const getBlocked = async () => {
-  const keys = await redis.keys('blocked:*');
+  // 🔒 fallback seguro
+  if (!redis) return [];
+
+  // ✅ evita erro do TypeScript com redis possivelmente null
+  const redisClient = redis;
+
+  const keys = await redisClient.keys('blocked:*');
 
   const data = await Promise.all(
     keys.map(async (key) => {
-      const ttl = await redis.ttl(key);
+      const ttl = await redisClient.ttl(key);
       return { key, ttl };
     })
   );
@@ -16,7 +24,13 @@ export const getBlocked = async () => {
 
 // 🔍 LISTAR WHITELIST
 export const getWhitelist = async () => {
-  const keys = await redis.keys('whitelist:*');
+  // 🔒 fallback seguro
+  if (!redis) return [];
+
+  // ✅ evita erro do TypeScript com redis possivelmente null
+  const redisClient = redis;
+
+  const keys = await redisClient.keys('whitelist:*');
 
   return keys;
 };

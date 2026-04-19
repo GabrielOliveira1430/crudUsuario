@@ -1,3 +1,5 @@
+// permission.middleware.ts
+
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../../database/prisma';
 import { redis } from '../config/redis';
@@ -23,11 +25,13 @@ export function permissionMiddleware(permissionName: string) {
 
       let permissions: string[] = [];
 
-      // 🔥 1. TENTA PEGAR DO REDIS
-      const cached = await redis.get(cacheKey);
+      // 🔥 1. TENTA PEGAR DO REDIS (se existir)
+      if (redis) {
+        const cached = await redis.get(cacheKey);
 
-      if (cached) {
-        permissions = JSON.parse(cached);
+        if (cached) {
+          permissions = JSON.parse(cached);
+        }
       }
 
       // 🔥 2. SE VAZIO → BUSCA NO BANCO
@@ -39,10 +43,10 @@ export function permissionMiddleware(permissionName: string) {
           },
         });
 
-        permissions = rolePermissions.map(rp => rp.permission.name);
+        permissions = rolePermissions.map((rp) => rp.permission.name);
 
-        // 🔥 só salva se tiver dados
-        if (permissions.length > 0) {
+        // 🔥 só salva se tiver dados e Redis existir
+        if (permissions.length > 0 && redis) {
           await redis.set(
             cacheKey,
             JSON.stringify(permissions),

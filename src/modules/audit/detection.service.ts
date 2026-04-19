@@ -1,4 +1,6 @@
-import {redis} from '../../shared/config/redis';
+// detection.service.ts
+
+import { redis } from '../../shared/config/redis';
 
 const WINDOW = 60; // segundos
 
@@ -9,11 +11,19 @@ export const detectSuspiciousActivity = async (data: {
 }) => {
   const { userId, action, ip } = data;
 
+  // 🔒 fallback seguro se Redis não existir
+  if (!redis) {
+    return {
+      suspicious: false,
+    };
+  }
+
   const keyBase = userId ? `user:${userId}` : `ip:${ip}`;
 
   // 🔥 contador geral
   const activityKey = `${keyBase}:activity`;
   const total = await redis.incr(activityKey);
+
   if (total === 1) {
     await redis.expire(activityKey, WINDOW);
   }
@@ -24,6 +34,7 @@ export const detectSuspiciousActivity = async (data: {
 
   if (action === 'DELETE') {
     deleteCount = await redis.incr(deleteKey);
+
     if (deleteCount === 1) {
       await redis.expire(deleteKey, WINDOW);
     }
@@ -35,7 +46,7 @@ export const detectSuspiciousActivity = async (data: {
   if (deleteCount >= 5) {
     return {
       suspicious: true,
-      reason: 'Muitos DELETE em pouco tempo'
+      reason: 'Muitos DELETE em pouco tempo',
     };
   }
 
@@ -43,11 +54,11 @@ export const detectSuspiciousActivity = async (data: {
   if (total >= 20) {
     return {
       suspicious: true,
-      reason: 'Muitas ações em pouco tempo'
+      reason: 'Muitas ações em pouco tempo',
     };
   }
 
   return {
-    suspicious: false
+    suspicious: false,
   };
-}; 
+};

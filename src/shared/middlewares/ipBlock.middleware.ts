@@ -1,3 +1,5 @@
+// ipBlock.middleware.ts
+
 import { Request, Response, NextFunction } from 'express';
 import { redis } from '../config/redis';
 
@@ -26,8 +28,12 @@ export async function ipBlockMiddleware(
   next: NextFunction
 ) {
   const ip = getClientIp(req);
-
   const blockKey = `login:block:${ip}`;
+
+  // 🔒 se Redis não existir, segue normalmente
+  if (!redis) {
+    return next();
+  }
 
   const isBlocked = await redis.get(blockKey);
 
@@ -43,6 +49,9 @@ export async function ipBlockMiddleware(
 
 // 📈 registrar erro
 export async function registerFailedAttempt(ip: string) {
+  // 🔒 se Redis não existir, não quebra fluxo
+  if (!redis) return;
+
   const attemptsKey = `login:attempts:${ip}`;
   const blockKey = `login:block:${ip}`;
 
@@ -63,6 +72,9 @@ export async function registerFailedAttempt(ip: string) {
 
 // ✅ resetar sucesso
 export async function resetAttempts(ip: string) {
+  // 🔒 se Redis não existir, não quebra fluxo
+  if (!redis) return;
+
   const attemptsKey = `login:attempts:${ip}`;
   const blockKey = `login:block:${ip}`;
 
