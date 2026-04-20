@@ -1,4 +1,8 @@
-import 'dotenv/config';
+// ✅ Carrega .env APENAS em ambiente local
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
+
 import app from './app';
 import { redis } from './shared/config/redis';
 
@@ -6,7 +10,10 @@ const PORT = process.env.PORT || 3000;
 
 async function startServer() {
   try {
-    // 🔥 Só testa Redis se existir
+    // 🔍 Debug para garantir que a variável chegou
+    console.log('🔥 REDIS_URL:', process.env.REDIS_URL);
+
+    // 🔥 Testa conexão com Redis se existir
     if (redis) {
       await redis.set('test', 'ok');
       const value = await redis.get('test');
@@ -23,13 +30,14 @@ async function startServer() {
   } catch (error) {
     console.error('🔴 Erro ao iniciar servidor:', error);
 
-    // 👉 NÃO derruba o servidor se Redis falhar
+    // 👉 Não derruba o servidor se Redis falhar
     app.listen(PORT, () => {
       console.log(`🚀 Servidor rodando na porta ${PORT} (sem Redis)`);
     });
   }
 }
 
+// 🚫 Evita rodar em testes
 if (process.env.NODE_ENV !== 'test') {
   startServer();
 }
