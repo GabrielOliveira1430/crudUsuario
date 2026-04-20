@@ -22,6 +22,11 @@ async function startServer() {
       console.log('🟡 Rodando sem Redis');
     }
 
+    // ✅ ROTA RAIZ (NOVO)
+    app.get("/", (req, res) => {
+      res.send("API rodando 🚀");
+    });
+
     app.listen(PORT, () => {
       console.log(`🚀 Servidor rodando na porta ${PORT}`);
       console.log(`📘 Swagger em /api-docs`);
