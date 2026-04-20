@@ -10,36 +10,38 @@ import securityRoutes from './modules/security/security.routes';
 
 import { swaggerSetup } from './shared/config/swagger';
 import { errorMiddleware } from './shared/middlewares/error.middleware';
-import { globalLimiter } from './shared/middlewares/rateLimit.middleware';
 import { auditMiddleware } from './shared/middlewares/audit.middleware';
 import { blockMiddleware } from './shared/middlewares/block.middleware';
 
 const app = express();
 
-// 🔧 Middlewares básicos
+// 🔧 CORE MIDDLEWARES
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
-app.use(helmet());
 
-// 📊 Logs
+// 🔥 CORS CORRIGIDO (IMPORTANTE PARA RAILWAY)
+app.use(
+  cors({
+    origin: '*', // depois você pode restringir
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  })
+);
+
+app.use(helmet());
 app.use(morgan('dev'));
 
-// 🚧 Rate limit global (opcional)
-// app.use(globalLimiter);
-
-// 🔥 BLOQUEIO GLOBAL (ANTES DAS ROTAS)
+// 🚧 BLOQUEIO GLOBAL
 app.use(blockMiddleware);
 
-// ✅ ROTA RAIZ (ADICIONADA AQUI)
-app.get("/", (req, res) => {
-  res.send("API rodando 🚀");
+// 🏠 ROOT
+app.get('/', (req, res) => {
+  res.send('API rodando 🚀');
 });
 
-// 📘 Swagger
+// 📘 SWAGGER
 swaggerSetup(app);
 
-// 🛣 ROTAS (AGRUPADAS)
+// 🛣 ROTAS
 const routes = express.Router();
 
 routes.use('/users', userRoutes);
@@ -47,18 +49,18 @@ routes.use('/auth', authRoutes);
 routes.use('/audit-logs', auditRoutes);
 routes.use('/security', securityRoutes);
 
-// base path da API
+// ⚠️ IMPORTANTE: prefixo correto
 app.use('/api/v1', routes);
 
-// 🔍 Health check
+// 🔍 HEALTH
 app.get('/health', (req, res) => {
-  return res.json({ status: 'ok' });
+  res.json({ status: 'ok' });
 });
 
-// 🔥 AUDITORIA GLOBAL (DEPOIS DAS ROTAS)
+// 📊 AUDITORIA
 app.use(auditMiddleware);
 
-// ⚠️ Middleware de erro (SEMPRE O ÚLTIMO)
+// ❌ ERRO HANDLER
 app.use(errorMiddleware);
 
 export default app;

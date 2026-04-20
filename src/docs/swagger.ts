@@ -1,4 +1,4 @@
-import { userPaths } from './paths/users.path'; 
+import { userPaths } from './paths/users.path';
 import { authPaths } from './paths/auth.path';
 
 import { userSchemas } from './schemas/user.docs';
@@ -13,7 +13,7 @@ export const swaggerDocument = {
     description: 'API de usuários e autenticação com segurança avançada',
   },
 
-  // ❌ REMOVIDO servers daqui
+  // 🚀 NÃO define servers aqui (será controlado pelo config)
 
   tags: [
     {
