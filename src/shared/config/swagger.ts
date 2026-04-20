@@ -13,19 +13,18 @@ export const swaggerSetup = (app: any) => {
   const document = {
     ...swaggerDocument,
 
+    // 🔥 FORÇA sobrescrever o servers
     servers: [
       {
         url: serverUrl + '/api/v1',
       },
     ],
 
-    // ✅ Junta TODAS as rotas (users + auth)
     paths: {
       ...swaggerDocument.paths,
       ...authPaths,
     },
 
-    // ✅ Junta TODOS os schemas sem sobrescrever
     components: {
       ...swaggerDocument.components,
       schemas: {
@@ -35,6 +34,7 @@ export const swaggerSetup = (app: any) => {
     },
   };
 
-  // 🚀 Swagger UI
+  console.log("🔥 Swagger server:", serverUrl); // debug
+
   app.use('/docs', swaggerUi.serve, swaggerUi.setup(document));
 };
