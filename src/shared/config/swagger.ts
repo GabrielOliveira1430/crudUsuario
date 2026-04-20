@@ -11,7 +11,7 @@ export const swaggerSetup = (app: any) => {
   const document = {
     ...swaggerDocument,
 
-    // 🚀 FORÇA URL CORRETA EM QUALQUER AMBIENTE
+    // 🔥 FIX DEFINITIVO
     servers: [
       {
         url: serverUrl,
@@ -21,5 +21,14 @@ export const swaggerSetup = (app: any) => {
 
   console.log('🔥 Swagger rodando em:', serverUrl);
 
-  app.use('/docs', swaggerUi.serve, swaggerUi.setup(document));
+  // 🚀 GARANTE CACHE LIMPO DO SWAGGER UI
+  app.use(
+    '/docs',
+    swaggerUi.serve,
+    swaggerUi.setup(document, {
+      swaggerOptions: {
+        persistAuthorization: true,
+      },
+    })
+  );
 };

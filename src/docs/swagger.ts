@@ -13,8 +13,6 @@ export const swaggerDocument = {
     description: 'API de usuários e autenticação com segurança avançada',
   },
 
-  // 🚀 NÃO define servers aqui (será controlado pelo config)
-
   tags: [
     {
       name: 'Users',

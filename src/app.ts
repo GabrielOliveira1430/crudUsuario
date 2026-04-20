@@ -15,14 +15,14 @@ import { blockMiddleware } from './shared/middlewares/block.middleware';
 
 const app = express();
 
-// 🔧 CORE MIDDLEWARES
+// 🔧 CORE
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 🔥 CORS CORRIGIDO (IMPORTANTE PARA RAILWAY)
+// 🔥 CORS FIX FINAL
 app.use(
   cors({
-    origin: '*', // depois você pode restringir
+    origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   })
 );
@@ -38,7 +38,7 @@ app.get('/', (req, res) => {
   res.send('API rodando 🚀');
 });
 
-// 📘 SWAGGER
+// 📘 SWAGGER (ANTES DAS ROTAS)
 swaggerSetup(app);
 
 // 🛣 ROTAS
@@ -49,18 +49,17 @@ routes.use('/auth', authRoutes);
 routes.use('/audit-logs', auditRoutes);
 routes.use('/security', securityRoutes);
 
-// ⚠️ IMPORTANTE: prefixo correto
 app.use('/api/v1', routes);
 
-// 🔍 HEALTH
+// 🔍 HEALTH CHECK
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// 📊 AUDITORIA
+// 📊 AUDIT
 app.use(auditMiddleware);
 
-// ❌ ERRO HANDLER
+// ❌ ERROR HANDLER
 app.use(errorMiddleware);
 
 export default app;

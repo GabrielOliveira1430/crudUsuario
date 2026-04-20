@@ -15,8 +15,6 @@ async function startServer() {
       await redis.set('test', 'ok');
       const value = await redis.get('test');
       console.log('🟢 Redis conectado:', value);
-    } else {
-      console.log('🟡 Rodando sem Redis');
     }
 
     app.listen(PORT, () => {
@@ -28,7 +26,7 @@ async function startServer() {
     console.error('🔴 Erro ao iniciar servidor:', error);
 
     app.listen(PORT, () => {
-      console.log(`🚀 Servidor rodando na porta ${PORT} (fallback)`);
+      console.log(`🚀 Servidor rodando (fallback)`);
     });
   }
 }
