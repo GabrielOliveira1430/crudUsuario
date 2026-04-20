@@ -31,6 +31,11 @@ app.use(morgan('dev'));
 // 🔥 BLOQUEIO GLOBAL (ANTES DAS ROTAS)
 app.use(blockMiddleware);
 
+// ✅ ROTA RAIZ (ADICIONADA AQUI)
+app.get("/", (req, res) => {
+  res.send("API rodando 🚀");
+});
+
 // 📘 Swagger
 swaggerSetup(app);
 
