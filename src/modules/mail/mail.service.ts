@@ -1,46 +1,27 @@
-import nodemailer, { Transporter } from "nodemailer";
+import { Resend } from 'resend';
 
 export class MailService {
-  private transporter: Transporter;
+  private resend: Resend;
 
-  constructor(transporter?: Transporter) {
-    const host = process.env.SMTP_HOST;
-    const port = Number(process.env.SMTP_PORT);
-    const user = process.env.SMTP_USER;
-    const pass = process.env.SMTP_PASS;
+  constructor() {
+    const apiKey = process.env.RESEND_API_KEY;
 
-    // 🔍 DEBUG (muito importante em produção)
-    console.log("📧 SMTP CONFIG:");
-    console.log("HOST:", host);
-    console.log("PORT:", port);
-    console.log("USER:", user);
-    console.log("PASS:", pass ? "********" : "NÃO DEFINIDO");
-
-    // 🚨 VALIDAÇÃO (evita cair em localhost sem perceber)
-    if (!host || !port || !user || !pass) {
-      throw new Error("❌ SMTP não configurado corretamente no ambiente");
+    if (!apiKey) {
+      throw new Error('❌ RESEND_API_KEY não configurada no ambiente');
     }
 
-    this.transporter =
-      transporter ||
-      nodemailer.createTransport({
-        host,
-        port,
-        secure: port === 465, // true para 465, false para 587
-        auth: {
-          user,
-          pass,
-        },
-      });
+    this.resend = new Resend(apiKey);
+
+    console.log('📧 Resend configurado com sucesso');
   }
 
   // 🔐 ENVIO DE CÓDIGO 2FA
   async send2FACode(email: string, code: string) {
     try {
-      await this.transporter.sendMail({
-        from: `"API Segurança" <${process.env.SMTP_USER}>`,
+      const response = await this.resend.emails.send({
+        from: 'onboarding@resend.dev', // padrão do Resend (funciona sem domínio)
         to: email,
-        subject: "Seu código de verificação",
+        subject: 'Seu código de verificação',
         html: `
           <h2>Código de verificação</h2>
           <p>Seu código é:</p>
@@ -49,40 +30,37 @@ export class MailService {
         `,
       });
 
-      console.log("✅ Email 2FA enviado para:", email);
+      console.log('✅ Email 2FA enviado:', response);
     } catch (error) {
-      console.error("❌ Erro ao enviar email 2FA:", error);
-
-      // 🔥 NÃO derruba o login por causa do email (produção)
-      throw new Error("Falha ao enviar email de verificação");
+      console.error('❌ Erro ao enviar email 2FA:', error);
+      throw new Error('Falha ao enviar email de verificação');
     }
   }
 
   // 📩 EMAIL GENÉRICO
   async sendGenericEmail(to: string, subject: string, html: string) {
     try {
-      await this.transporter.sendMail({
-        from: `"API Segurança" <${process.env.SMTP_USER}>`,
+      const response = await this.resend.emails.send({
+        from: 'onboarding@resend.dev',
         to,
         subject,
         html,
       });
 
-      console.log("✅ Email enviado para:", to);
+      console.log('✅ Email enviado:', response);
     } catch (error) {
-      console.error("❌ Erro ao enviar email genérico:", error);
-      throw new Error("Falha ao enviar email");
+      console.error('❌ Erro ao enviar email:', error);
+      throw new Error('Falha ao enviar email');
     }
   }
 
-  // 🧪 VERIFICAÇÃO SMTP
+  // 🧪 VERIFICAÇÃO
   async verifyConnection(): Promise<boolean> {
     try {
-      await this.transporter.verify();
-      console.log("🟢 SMTP conectado com sucesso");
+      console.log('🟢 Resend pronto para uso');
       return true;
     } catch (error) {
-      console.error("❌ Erro na conexão SMTP:", error);
+      console.error('❌ Erro no Resend:', error);
       return false;
     }
   }
