@@ -15,11 +15,14 @@ import { blockMiddleware } from './shared/middlewares/block.middleware';
 
 const app = express();
 
+// 🔥 ESSENCIAL PARA RAILWAY (resolve rate-limit + X-Forwarded-For)
+app.set('trust proxy', 1);
+
 // 🔧 CORE
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 🔥 CORS FIX FINAL
+// 🌐 CORS
 app.use(
   cors({
     origin: '*',
@@ -27,7 +30,10 @@ app.use(
   })
 );
 
+// 🛡️ SEGURANÇA
 app.use(helmet());
+
+// 📊 LOGS
 app.use(morgan('dev'));
 
 // 🚧 BLOQUEIO GLOBAL
@@ -56,10 +62,10 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// 📊 AUDIT
+// 📊 AUDITORIA (depois das rotas)
 app.use(auditMiddleware);
 
-// ❌ ERROR HANDLER
+// ❌ ERROR HANDLER (SEMPRE O ÚLTIMO)
 app.use(errorMiddleware);
 
 export default app;
