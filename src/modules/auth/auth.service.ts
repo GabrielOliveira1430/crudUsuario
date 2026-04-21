@@ -40,12 +40,7 @@ export async function loginService(
     },
   });
 
-  // ❗ evita enumeração
-  if (!user) {
-    throw new Error('Credenciais inválidas');
-  }
-
-  if (!user.isActive) {
+  if (!user || !user.isActive) {
     throw new Error('Credenciais inválidas');
   }
 
@@ -72,9 +67,7 @@ export async function loginService(
 
     await prisma.user.update({
       where: { id: user.id },
-      data: {
-        loginAttempts: attempts,
-      },
+      data: { loginAttempts: attempts },
     });
 
     throw new Error('Credenciais inválidas');
@@ -100,13 +93,17 @@ export async function loginService(
     },
   });
 
-  try {
-    await mailService.send2FACode(user.email, code);
-  } catch (err) {
-    console.error('Erro ao enviar email:', err);
-    throw new Error('Erro ao enviar código, tente novamente');
-  }
+  // 🚀 ENVIO EM BACKGROUND (NÃO BLOQUEIA LOGIN)
+  mailService
+    .send2FACode(user.email, code)
+    .then(() => {
+      console.log('✅ Email 2FA enviado');
+    })
+    .catch((err) => {
+      console.error('❌ Falha ao enviar email 2FA:', err);
+    });
 
+  // ⚡ RESPOSTA IMEDIATA
   return {
     message: 'Código de verificação enviado',
     suspicious,
@@ -182,7 +179,6 @@ export async function refreshService(userId: number, oldToken: string) {
     throw new Error('Refresh token expirado');
   }
 
-  // 🔁 rotação
   await prisma.refreshToken.delete({
     where: { token: oldToken },
   });
