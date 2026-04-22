@@ -8,19 +8,28 @@ export const swaggerDocument = {
   openapi: '3.0.0',
 
   info: {
-    title: 'API Profissional',
+    title: 'CoreAuth API',
     version: '1.0.0',
-    description: 'API de usuários e autenticação com segurança avançada',
+    description: 'API de usuários e autenticação com JWT',
   },
+
+  servers: [
+    {
+      url:
+        process.env.NODE_ENV === 'production'
+          ? 'https://api.coreauth.dev/api/v1'
+          : 'http://localhost:3000/api/v1',
+    },
+  ],
 
   tags: [
     {
       name: 'Users',
-      description: 'Rotas de usuários',
+      description: 'CRUD de usuários',
     },
     {
       name: 'Auth',
-      description: 'Rotas de autenticação',
+      description: 'Autenticação e login',
     },
   ],
 
@@ -35,7 +44,7 @@ export const swaggerDocument = {
         type: 'http',
         scheme: 'bearer',
         bearerFormat: 'JWT',
-        description: 'Insira o token JWT no formato: Bearer {token}',
+        description: 'Formato: Bearer {token}',
       },
     },
 
@@ -45,6 +54,7 @@ export const swaggerDocument = {
     },
   },
 
+  // 🔐 Protege tudo por padrão
   security: [
     {
       bearerAuth: [],
