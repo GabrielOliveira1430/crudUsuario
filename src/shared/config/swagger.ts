@@ -1,7 +1,8 @@
+import { Express } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerDocument } from '../../docs/swagger';
 
-export const swaggerSetup = (app: any) => {
+export const swaggerSetup = (app: Express) => {
   const isProduction = process.env.NODE_ENV === 'production';
 
   const serverUrl = isProduction
@@ -10,10 +11,10 @@ export const swaggerSetup = (app: any) => {
 
   const document = {
     ...swaggerDocument,
-
     servers: [
       {
         url: serverUrl,
+        description: isProduction ? 'Production' : 'Local',
       },
     ],
   };
