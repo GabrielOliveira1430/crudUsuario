@@ -93,17 +93,20 @@ export async function loginService(
     },
   });
 
-  // 🚀 ENVIO EM BACKGROUND (NÃO BLOQUEIA LOGIN)
-  mailService
-    .send2FACode(user.email, code)
-    .then(() => {
-      console.log('✅ Email 2FA enviado');
-    })
-    .catch((err) => {
-      console.error('❌ Falha ao enviar email 2FA:', err);
-    });
+  // 🔥 ENVIO CONFIÁVEL (AGUARDANDO)
+  try {
+    console.log('📨 Enviando 2FA para:', user.email);
 
-  // ⚡ RESPOSTA IMEDIATA
+    await mailService.send2FACode(user.email, code);
+
+    console.log('✅ Email 2FA enviado com sucesso');
+  } catch (err) {
+    console.error('❌ Falha ao enviar email 2FA:', err);
+
+    // ⚠️ opcional: você pode decidir bloquear login se falhar
+    // throw new Error('Erro ao enviar código de verificação');
+  }
+
   return {
     message: 'Código de verificação enviado',
     suspicious,

@@ -43,7 +43,19 @@ export async function login(req: Request, res: Response) {
 
   try {
     const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email e senha são obrigatórios',
+        error: 'Dados inválidos',
+        data: null,
+      });
+    }
+
     const userAgent = req.headers['user-agent'] || 'unknown';
+
+    console.log('🔐 Tentativa de login:', { email, ip });
 
     const result = await loginService(email, password, ip, userAgent);
 
@@ -62,6 +74,8 @@ export async function login(req: Request, res: Response) {
   } catch (error: any) {
     await registerFailedAttempt(ip);
 
+    console.error('❌ Erro no login:', error.message);
+
     return res.status(400).json({
       success: false,
       message: error.message || 'Erro no login',
@@ -76,6 +90,15 @@ export async function verify2FA(req: Request, res: Response) {
   try {
     const { email, code } = req.body;
 
+    if (!email || !code) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email e código são obrigatórios',
+        error: 'Dados inválidos',
+        data: null,
+      });
+    }
+
     const result = await verify2FAService(email, code);
 
     return res.json({
@@ -84,6 +107,8 @@ export async function verify2FA(req: Request, res: Response) {
       data: result,
     });
   } catch (error: any) {
+    console.error('❌ Erro no 2FA:', error.message);
+
     return res.status(400).json({
       success: false,
       message: error.message || 'Erro na verificação',
@@ -211,6 +236,15 @@ export async function forgotPassword(req: Request, res: Response) {
   try {
     const { email } = req.body;
 
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email é obrigatório',
+        error: 'Dados inválidos',
+        data: null,
+      });
+    }
+
     const result = await forgotPasswordService(email);
 
     return res.json({
@@ -219,6 +253,8 @@ export async function forgotPassword(req: Request, res: Response) {
       data: result,
     });
   } catch (error: any) {
+    console.error('❌ Erro forgot password:', error.message);
+
     return res.status(400).json({
       success: false,
       message: error.message || 'Erro ao solicitar recuperação',
@@ -233,6 +269,15 @@ export async function resetPassword(req: Request, res: Response) {
   try {
     const { token, password } = req.body;
 
+    if (!token || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token e senha são obrigatórios',
+        error: 'Dados inválidos',
+        data: null,
+      });
+    }
+
     const result = await resetPasswordService(token, password);
 
     return res.json({
@@ -241,6 +286,8 @@ export async function resetPassword(req: Request, res: Response) {
       data: result,
     });
   } catch (error: any) {
+    console.error('❌ Erro reset password:', error.message);
+
     return res.status(400).json({
       success: false,
       message: error.message || 'Erro ao redefinir senha',
