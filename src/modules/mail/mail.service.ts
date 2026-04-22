@@ -19,14 +19,16 @@ export class MailService {
   async send2FACode(email: string, code: string) {
     try {
       const response = await this.resend.emails.send({
-        from: 'onboarding@resend.dev', // padrão do Resend (funciona sem domínio)
+        from: 'CoreAuth <no-reply@coreauth.dev>', // ✅ SEU DOMÍNIO
         to: email,
         subject: 'Seu código de verificação',
         html: `
-          <h2>Código de verificação</h2>
-          <p>Seu código é:</p>
-          <h1>${code}</h1>
-          <p>Expira em 5 minutos</p>
+          <div style="font-family: Arial, sans-serif;">
+            <h2>🔐 Código de verificação</h2>
+            <p>Seu código é:</p>
+            <h1 style="letter-spacing: 4px;">${code}</h1>
+            <p>Expira em 5 minutos</p>
+          </div>
         `,
       });
 
@@ -41,7 +43,7 @@ export class MailService {
   async sendGenericEmail(to: string, subject: string, html: string) {
     try {
       const response = await this.resend.emails.send({
-        from: 'onboarding@resend.dev',
+        from: 'CoreAuth <no-reply@coreauth.dev>', // ✅ DOMÍNIO
         to,
         subject,
         html,
