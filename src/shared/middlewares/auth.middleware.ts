@@ -13,7 +13,6 @@ export const authMiddleware = async (
 ) => {
   const authHeader = req.headers.authorization;
 
-  // 🚫 Sem token
   if (!authHeader) {
     return res.status(401).json({
       success: false,
@@ -21,7 +20,6 @@ export const authMiddleware = async (
     });
   }
 
-  // 🔐 Formato Bearer
   const parts = authHeader.split(' ');
 
   if (parts.length !== 2) {
@@ -41,7 +39,7 @@ export const authMiddleware = async (
   }
 
   try {
-    // 🚫 VERIFICA BLACKLIST
+    // 🚫 blacklist
     const blocked = await isBlacklisted(token);
 
     if (blocked) {
@@ -51,11 +49,10 @@ export const authMiddleware = async (
       });
     }
 
-    // 🔍 Valida token
+    // 🔍 valida token
     const decoded = verifyAccessToken(token) as JwtPayload;
 
     const userId = decoded.sub ? Number(decoded.sub) : null;
-    const roleFromToken = decoded.role as string | undefined;
 
     if (!userId) {
       return res.status(401).json({
@@ -64,7 +61,7 @@ export const authMiddleware = async (
       });
     }
 
-    // 🔎 Busca usuário no banco (SEGURANÇA)
+    // 🔎 SEMPRE busca no banco (fonte da verdade)
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
@@ -83,14 +80,13 @@ export const authMiddleware = async (
       });
     }
 
-    // ✅ Injeta user no request
+    // ✅ IMPORTANTE: role vem do banco (NUNCA do token)
     (req as any).user = {
       id: user.id,
-      role: roleFromToken || user.role,
+      role: user.role,
     };
 
-    // 🧠 LOG PARA DEBUG
-    console.log('USER DO TOKEN:', (req as any).user);
+    console.log('USER AUTH FINAL:', (req as any).user);
 
     return next();
   } catch {

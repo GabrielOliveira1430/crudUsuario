@@ -1,4 +1,5 @@
 import prisma from './src/database/prisma';
+import bcrypt from 'bcrypt';
 
 async function main() {
   console.log('🔥 Iniciando seed...');
@@ -24,7 +25,32 @@ async function main() {
     skipDuplicates: true,
   });
 
-  console.log('✅ Seed finalizado com sucesso!');
+  // 🔑 CRIAR ADMIN
+  const adminEmail = 'admin@coreauth.dev';
+
+  const existingAdmin = await prisma.user.findUnique({
+    where: { email: adminEmail },
+  });
+
+  if (!existingAdmin) {
+    const hashedPassword = await bcrypt.hash('Senha@123', 10);
+
+    await prisma.user.create({
+      data: {
+        name: 'Administrador',
+        email: adminEmail,
+        password: hashedPassword,
+        role: 'ADMIN',
+        isActive: true,
+      },
+    });
+
+    console.log('👑 Admin criado com sucesso!');
+  } else {
+    console.log('ℹ️ Admin já existe');
+  }
+
+  console.log('✅ Seed finalizado!');
 }
 
 main()

@@ -1,15 +1,17 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
+import type { InternalAxiosRequestConfig } from "axios";
 import { refreshTokenRequest } from "../services/auth.service";
 
 export const api = axios.create({
-  baseURL: "http://localhost:3000/api/v1",
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1",
 });
 
 // 🔐 REQUEST → adiciona token
-api.interceptors.request.use((config) => {
+api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = localStorage.getItem("accessToken");
 
-  if (token && config.headers) {
+  if (token) {
+    config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
   }
 
@@ -18,13 +20,16 @@ api.interceptors.request.use((config) => {
 
 // 🔁 CONTROLE GLOBAL
 let isRefreshing = false;
-let failedQueue: any[] = [];
+let failedQueue: {
+  resolve: (token: string) => void;
+  reject: (err: any) => void;
+}[] = [];
 
 // processa fila
 const processQueue = (error: any, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) prom.reject(error);
-    else prom.resolve(token);
+    else if (token) prom.resolve(token);
   });
 
   failedQueue = [];
@@ -34,24 +39,27 @@ const processQueue = (error: any, token: string | null = null) => {
 api.interceptors.response.use(
   (response) => response,
 
-  async (error) => {
-    const originalRequest = error.config;
+  async (error: AxiosError) => {
+    const originalRequest: any = error.config;
 
-    if (error.response?.status !== 401) {
+    if (!error.response || error.response.status !== 401) {
       return Promise.reject(error);
     }
 
+    // evita loop infinito
     if (originalRequest._retry) {
       return Promise.reject(error);
     }
 
     originalRequest._retry = true;
 
+    // se já está atualizando token → fila
     if (isRefreshing) {
       return new Promise((resolve, reject) => {
         failedQueue.push({ resolve, reject });
       })
         .then((token) => {
+          originalRequest.headers = originalRequest.headers || {};
           originalRequest.headers.Authorization = `Bearer ${token}`;
           return api(originalRequest);
         })
@@ -75,6 +83,7 @@ api.interceptors.response.use(
 
       processQueue(null, newAccessToken);
 
+      originalRequest.headers = originalRequest.headers || {};
       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
       return api(originalRequest);
@@ -84,6 +93,7 @@ api.interceptors.response.use(
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
 
+      // redireciona para login
       window.location.href = "/";
 
       return Promise.reject(err);
