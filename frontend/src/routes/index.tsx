@@ -6,6 +6,11 @@ import Dashboard from "../pages/Dashboard";
 import Profile from "../pages/Profile";
 import Admin from "../pages/Admin";
 
+// 🆕 novas páginas
+import Register from "../pages/Register";
+import ForgotPassword from "../pages/ForgotPassword";
+import ResetPassword from "../pages/ResetPassword";
+
 import PrivateRoute from "./PrivateRoute";
 import RoleRoute from "./RoleRoute";
 import MainLayout from "../layouts/MainLayout";
@@ -16,6 +21,11 @@ export default function AppRoutes() {
       {/* 🔓 PÚBLICAS */}
       <Route path="/" element={<Login />} />
       <Route path="/verify-2fa" element={<Verify2FA />} />
+
+      {/* 🆕 NOVAS ROTAS */}
+      <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* 🔒 USUÁRIO LOGADO */}
       <Route element={<PrivateRoute />}>

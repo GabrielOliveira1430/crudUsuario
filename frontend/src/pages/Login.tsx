@@ -58,6 +58,27 @@ export default function Login({ onSuccess }: LoginProps) {
       <button onClick={handleLogin} disabled={isPending}>
         {isPending ? "Entrando..." : "Entrar"}
       </button>
+
+      <br /><br />
+
+      {/* 🔗 NOVOS LINKS */}
+      <p>
+        <span
+          style={{ cursor: "pointer", color: "blue" }}
+          onClick={() => navigate("/forgot-password")}
+        >
+          Esqueceu a senha?
+        </span>
+      </p>
+
+      <p>
+        <span
+          style={{ cursor: "pointer", color: "blue" }}
+          onClick={() => navigate("/register")}
+        >
+          Criar conta
+        </span>
+      </p>
     </div>
   );
 }
