@@ -1,5 +1,3 @@
-// permission.middleware.ts
-
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../../database/prisma';
 import { redis } from '../config/redis';
@@ -23,19 +21,27 @@ export function permissionMiddleware(permissionName: string) {
       const role = user.role as Role;
       const cacheKey = CACHE_PREFIX + role;
 
-      let permissions: string[] = [];
+      let permissions: string[] | null = null;
 
-      // 🔥 1. TENTA PEGAR DO REDIS (se existir)
-      if (redis) {
-        const cached = await redis.get(cacheKey);
+      // 🔥 1. tenta Redis (com segurança)
+      try {
+        if (redis) {
+          const cached = await redis.get(cacheKey);
 
-        if (cached) {
-          permissions = JSON.parse(cached);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+
+            if (Array.isArray(parsed)) {
+              permissions = parsed;
+            }
+          }
         }
+      } catch (err) {
+        console.warn('Redis falhou, indo para DB');
       }
 
-      // 🔥 2. SE VAZIO → BUSCA NO BANCO
-      if (!permissions || permissions.length === 0) {
+      // 🔥 2. se não tem cache válido → banco
+      if (!permissions) {
         const rolePermissions = await prisma.rolePermission.findMany({
           where: { role },
           include: {
@@ -43,10 +49,12 @@ export function permissionMiddleware(permissionName: string) {
           },
         });
 
-        permissions = rolePermissions.map((rp) => rp.permission.name);
+        permissions = rolePermissions
+          .map((rp) => rp.permission?.name)
+          .filter(Boolean) as string[];
 
-        // 🔥 só salva se tiver dados e Redis existir
-        if (permissions.length > 0 && redis) {
+        // 🔥 salva cache apenas se válido
+        if (redis && permissions.length > 0) {
           await redis.set(
             cacheKey,
             JSON.stringify(permissions),
@@ -63,7 +71,12 @@ export function permissionMiddleware(permissionName: string) {
         permissionsLoaded: permissions,
       });
 
-      // 🔥 3. VALIDA
+      // 🔥 3. segurança extra: ADMIN bypass opcional (recomendado)
+      if (role === 'ADMIN') {
+        return next();
+      }
+
+      // 🔥 4. valida permissão
       if (!permissions.includes(permissionName)) {
         return res.status(403).json({
           success: false,
