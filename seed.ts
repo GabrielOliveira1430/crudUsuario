@@ -4,25 +4,29 @@ import bcrypt from 'bcrypt';
 async function main() {
   console.log('🔥 Iniciando seed...');
 
-  // 🔐 PERMISSÕES
+  // 🧨 LIMPA RELAÇÕES (IMPORTANTE PRA EVITAR BUGS)
+  await prisma.rolePermission.deleteMany();
+  await prisma.permission.deleteMany();
+
+  // 🔐 PERMISSÕES (RECRIAR LIMPO)
+  const permissionsData = [
+    { name: 'user:read' },
+    { name: 'user:update' },
+    { name: 'user:delete' },
+  ];
+
   await prisma.permission.createMany({
-    data: [
-      { name: 'user:read' },
-      { name: 'user:update' },
-      { name: 'user:delete' },
-    ],
-    skipDuplicates: true,
+    data: permissionsData,
   });
 
   const permissions = await prisma.permission.findMany();
 
-  // 🔗 RELAÇÃO COM ADMIN
+  // 🔗 RELAÇÃO COM ADMIN (AGORA LIMPA E GARANTIDA)
   await prisma.rolePermission.createMany({
     data: permissions.map((p) => ({
       role: 'ADMIN',
       permissionId: p.id,
     })),
-    skipDuplicates: true,
   });
 
   // 🔑 CRIAR ADMIN
@@ -50,7 +54,7 @@ async function main() {
     console.log('ℹ️ Admin já existe');
   }
 
-  console.log('✅ Seed finalizado!');
+  console.log('✅ Seed finalizado com sucesso!');
 }
 
 main()
