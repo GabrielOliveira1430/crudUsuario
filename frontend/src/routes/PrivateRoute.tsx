@@ -8,16 +8,19 @@ type Props = {
 export default function PrivateRoute({ roles }: Props) {
   const { isAuthenticated, loading, user } = useAuth();
 
+  // 🔥 evita flicker no Railway (IMPORTANTE)
   if (loading) {
-    return <p>Carregando...</p>;
+    return (
+      <p style={{ textAlign: "center", marginTop: 40 }}>
+        Carregando sessão...
+      </p>
+    );
   }
 
-  // 🔒 não logado
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;
   }
 
-  // 🔐 RBAC (se tiver roles definidas)
   if (roles && roles.length > 0) {
     const hasPermission = roles.includes(user?.role || "");
 

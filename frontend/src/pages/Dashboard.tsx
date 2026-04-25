@@ -6,12 +6,14 @@ import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../hooks/useTheme";
 import { useDebounce } from "../hooks/useDebounce";
 import { useQueryClient } from "@tanstack/react-query";
+import { useMe } from "../hooks/useMe";
 
 import toast from "react-hot-toast";
 
 import Card from "../components/Card";
 import UserCharts from "../components/UserCharts";
 import EditUserModal from "../components/EditUserModal";
+import CreateUserModal from "../components/CreateUserModal";
 import Pagination from "../components/Pagination";
 
 import SkeletonCards from "../components/SkeletonCards";
@@ -24,16 +26,16 @@ export default function Dashboard() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const [sortField, setSortField] = useState<"name" | "email" | "role">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
   const debouncedSearch = useDebounce(search, 500);
 
-  // 🔐 RBAC
-  const { can } = useAuth();
-
+  const { can, user } = useAuth();
   const { theme } = useTheme();
+  const { data: me } = useMe();
 
   const { data, isLoading } = useUsers(page, debouncedSearch);
   const { data: statsData, isLoading: statsLoading } = useUserStats();
@@ -41,6 +43,9 @@ export default function Dashboard() {
   const users = Array.isArray(data?.users) ? data.users : [];
   const total = data?.total || 0;
   const totalPages = data?.lastPage || 1;
+
+  // 🔐 Só ADMIN pode criar usuário
+  const canCreateUser = user?.role === "ADMIN";
 
   const sortedUsers = useMemo(() => {
     return [...users].sort((a, b) => {
@@ -59,12 +64,11 @@ export default function Dashboard() {
   const roles = statsData?.roles || { ADMIN: 0, USER: 0 };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Tem certeza?")) return;
+    if (!confirm("Tem certeza que deseja excluir este usuário?")) return;
 
     const queryKey = ["users", page, debouncedSearch];
     const previous = queryClient.getQueryData(queryKey);
 
-    // 🔥 optimistic update
     queryClient.setQueryData(queryKey, (old: any) => {
       if (!old?.users) return old;
 
@@ -85,7 +89,7 @@ export default function Dashboard() {
       });
   };
 
-  const handleSort = (field: any) => {
+  const handleSort = (field: "name" | "email" | "role") => {
     if (sortField === field) {
       setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
@@ -96,8 +100,34 @@ export default function Dashboard() {
 
   return (
     <>
-      <h1 style={title(theme)}>Dashboard</h1>
+      {/* HEADER */}
+      <div style={headerBox(theme)}>
+        <div>
+          <h1 style={title(theme)}>Dashboard</h1>
+          <p style={subtitle(theme)}>
+            Bem-vindo, {me?.data?.name || "Usuário"} 👋
+          </p>
+        </div>
 
+        <div style={actions}>
+          {canCreateUser && (
+            <button style={primaryBtn} onClick={() => setCreateOpen(true)}>
+              + Novo usuário
+            </button>
+          )}
+
+          <button
+            style={secondaryBtn}
+            onClick={() =>
+              queryClient.invalidateQueries({ queryKey: ["users"] })
+            }
+          >
+            Atualizar
+          </button>
+        </div>
+      </div>
+
+      {/* CARDS */}
       {isLoading ? (
         <SkeletonCards />
       ) : (
@@ -108,6 +138,7 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* GRÁFICOS */}
       {statsLoading ? (
         <div style={{ display: "flex", gap: 20 }}>
           <SkeletonChart />
@@ -117,6 +148,7 @@ export default function Dashboard() {
         <UserCharts growth={growth} roles={roles} />
       )}
 
+      {/* BUSCA */}
       <div style={{ marginTop: 30 }}>
         <input
           placeholder="Buscar usuário..."
@@ -129,6 +161,7 @@ export default function Dashboard() {
         />
       </div>
 
+      {/* TABELA */}
       {isLoading ? (
         <SkeletonTable />
       ) : (
@@ -152,14 +185,10 @@ export default function Dashboard() {
 
               <tbody>
                 {sortedUsers.map((u: any) => (
-                  <tr key={u.id}>
+                  <tr key={u.id} style={row(theme)}>
                     <td style={td(theme)}>{u.name}</td>
                     <td style={td(theme)}>{u.email}</td>
-
-                    <td style={td(theme)}>
-                      <span style={badge}>{u.role}</span>
-                    </td>
-
+                    <td style={td(theme)}>{u.role}</td>
                     <td style={td(theme)}>
                       <button
                         onClick={() => setSelectedUser(u)}
@@ -168,7 +197,6 @@ export default function Dashboard() {
                         Editar
                       </button>
 
-                      {/* 🔐 RBAC REAL */}
                       {can("user.delete") && (
                         <button
                           onClick={() => handleDelete(u.id)}
@@ -192,6 +220,7 @@ export default function Dashboard() {
         </>
       )}
 
+      {/* MODAIS */}
       {selectedUser && (
         <EditUserModal
           user={selectedUser}
@@ -201,16 +230,58 @@ export default function Dashboard() {
           }
         />
       )}
+
+      {createOpen && canCreateUser && (
+        <CreateUserModal
+          onClose={() => setCreateOpen(false)}
+          onSuccess={() =>
+            queryClient.invalidateQueries({ queryKey: ["users"] })
+          }
+        />
+      )}
     </>
   );
 }
 
-/* 🎨 estilos */
+/* 🎨 ESTILOS */
+
+const headerBox = (theme: any) => ({
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 20,
+});
 
 const title = (theme: any) => ({
-  marginBottom: 20,
+  margin: 0,
   color: theme.colors.text,
 });
+
+const subtitle = (theme: any) => ({
+  color: theme.colors.subtext,
+});
+
+const actions = {
+  display: "flex",
+  gap: 10,
+};
+
+const primaryBtn = {
+  background: "#4f46e5",
+  color: "#fff",
+  border: "none",
+  padding: "8px 14px",
+  borderRadius: 8,
+  cursor: "pointer",
+};
+
+const secondaryBtn = {
+  background: "#e5e7eb",
+  border: "none",
+  padding: "8px 14px",
+  borderRadius: 8,
+  cursor: "pointer",
+};
 
 const cardsGrid = {
   display: "grid",
@@ -219,10 +290,9 @@ const cardsGrid = {
 };
 
 const input = (theme: any) => ({
-  padding: 12,
-  borderRadius: 10,
+  padding: 10,
+  borderRadius: 8,
   border: `1px solid ${theme.colors.border}`,
-  width: 300,
   background: theme.colors.card,
   color: theme.colors.text,
 });
@@ -230,29 +300,29 @@ const input = (theme: any) => ({
 const tableWrapper = (theme: any) => ({
   marginTop: 20,
   background: theme.colors.card,
-  borderRadius: 14,
+  borderRadius: 10,
   overflow: "hidden",
-  border: `1px solid ${theme.colors.border}`,
 });
 
-const table = { width: "100%" };
+const table: React.CSSProperties = {
+  width: "100%",
+  borderCollapse: "collapse",
+};
 
 const th = (theme: any) => ({
-  padding: 14,
+  padding: 12,
   cursor: "pointer",
   color: theme.colors.subtext,
 });
 
 const td = (theme: any) => ({
-  padding: 14,
+  padding: 12,
   color: theme.colors.text,
 });
 
-const badge = {
-  padding: "4px 8px",
-  borderRadius: 6,
-  background: "#ddd",
-};
+const row = (theme: any) => ({
+  borderTop: `1px solid ${theme.colors.border}`,
+});
 
 const editBtn = {
   marginRight: 6,

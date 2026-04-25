@@ -24,36 +24,31 @@ import {
 const router = Router();
 
 /**
- * 🔓 ROTAS PÚBLICAS
+ * 🔐 CRIAR USUÁRIO (AGORA PROTEGIDO)
  */
-
-// Criar usuário
-router.post('/', validate(createUserSchema), createUser);
+router.post(
+  '/',
+  authMiddleware,
+  roleMiddleware(Role.ADMIN),
+  permissionMiddleware('user:create'),
+  validate(createUserSchema),
+  createUser
+);
 
 /**
  * 🔐 ROTAS PROTEGIDAS
  */
 
-// Teste de autenticação
-router.get('/protected', authMiddleware, (req, res) => {
-  return res.json({
-    success: true,
-    message: 'Rota protegida funcionando 🚀',
-    user: (req as any).user
-  });
-});
-
 // Usuário logado
 router.get('/me', authMiddleware, me);
 
 /**
- * 🔥 STATS (DASHBOARD)
- * ✔ Mantém permission + reforça com role correta
+ * 📊 STATS
  */
 router.get(
   '/stats',
   authMiddleware,
-  roleMiddleware(Role.ADMIN), // ✅ CORRIGIDO
+  roleMiddleware(Role.ADMIN),
   permissionMiddleware('user:read'),
   stats
 );
@@ -64,49 +59,45 @@ router.get(
 router.get(
   '/admin',
   authMiddleware,
-  roleMiddleware(Role.ADMIN), // ✅ CORRIGIDO
+  roleMiddleware(Role.ADMIN),
   (req, res) => {
     return res.json({ message: 'Área admin' });
   }
 );
 
 /**
- * 🔐 RBAC (PERMISSÕES - PROFISSIONAL)
+ * 🔐 USERS (RBAC)
  */
 
-// 🔥 LISTAR USUÁRIOS
 router.get(
   '/',
   authMiddleware,
-  roleMiddleware(Role.ADMIN), // ✅ CORRIGIDO
+  roleMiddleware(Role.ADMIN),
   permissionMiddleware('user:read'),
   getUsers
 );
 
-// 🔥 BUSCAR POR ID
 router.get(
   '/:id',
   authMiddleware,
-  roleMiddleware(Role.ADMIN), // ✅ CORRIGIDO
+  roleMiddleware(Role.ADMIN),
   permissionMiddleware('user:read'),
   getUser
 );
 
-// 🔥 ATUALIZAR
 router.put(
   '/:id',
   authMiddleware,
-  roleMiddleware(Role.ADMIN), // ✅ CORRIGIDO
+  roleMiddleware(Role.ADMIN),
   permissionMiddleware('user:update'),
   validate(updateUserSchema),
   updateUser
 );
 
-// 🔥 DELETAR
 router.delete(
   '/:id',
   authMiddleware,
-  roleMiddleware(Role.ADMIN), // ✅ CORRIGIDO
+  roleMiddleware(Role.ADMIN),
   permissionMiddleware('user:delete'),
   deleteUser
 );

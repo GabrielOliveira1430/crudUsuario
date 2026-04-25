@@ -1,76 +1,70 @@
 import { api } from "../api/client";
 
-// 1️⃣ LOGIN (envia código 2FA)
+// LOGIN
 export const loginRequest = async (email: string, password: string) => {
-  const response = await api.post("/auth/login", {
+  const { data } = await api.post("/auth/login", {
     email,
     password,
   });
-
-  return response.data;
+  return data;
 };
 
-// 2️⃣ VERIFY 2FA (retorna tokens)
+// VERIFY 2FA
 export const verify2FARequest = async (email: string, code: string) => {
-  const response = await api.post("/auth/verify-2fa", {
+  const { data } = await api.post("/auth/verify-2fa", {
     email,
     code,
   });
-
-  return response.data;
+  return data;
 };
 
-// 3️⃣ REFRESH TOKEN
+// REFRESH
 export const refreshTokenRequest = async (refreshToken: string) => {
-  const response = await api.post("/auth/refresh", {
+  const { data } = await api.post("/auth/refresh", {
     refreshToken,
   });
-
-  return response.data;
+  return data;
 };
 
-// 🆕 REGISTER
+// REGISTER
 export const registerRequest = async (
   name: string,
   email: string,
   password: string
 ) => {
-  const response = await api.post("/users", {
+  const { data } = await api.post("/users", {
     name,
     email,
     password,
   });
-
-  return response.data;
+  return data;
 };
 
-// 🆕 FORGOT PASSWORD
+// FORGOT
 export const forgotPasswordRequest = async (email: string) => {
-  const response = await api.post("/auth/forgot-password", {
+  const { data } = await api.post("/auth/forgot-password", {
     email,
   });
-
-  return response.data;
+  return data;
 };
 
-// 🆕 RESET PASSWORD
+// RESET
 export const resetPasswordRequest = async (
   token: string,
   newPassword: string
 ) => {
-  const response = await api.post("/auth/reset-password", {
+  const { data } = await api.post("/auth/reset-password", {
     token,
     newPassword,
   });
-
-  return response.data;
+  return data;
 };
 
-// 🔐 RBAC
+// PERMISSIONS
 export const getPermissions = async () => {
   try {
-    const response = await api.get("/auth/permissions");
-    return response.data;
+    const { data } = await api.get("/auth/permissions");
+    return data;
   } catch {
     return [];
   }

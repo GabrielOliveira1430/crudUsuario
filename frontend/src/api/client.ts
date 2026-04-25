@@ -1,14 +1,15 @@
 import axios, { AxiosError } from "axios";
 import type { InternalAxiosRequestConfig } from "axios";
 import { refreshTokenRequest } from "../services/auth.service";
+import { getAccessToken } from "../store/auth.store";
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1",
 });
 
-// 🔐 REQUEST → adiciona token
+// 🔐 REQUEST → token
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const token = localStorage.getItem("accessToken");
+  const token = getAccessToken();
 
   if (token) {
     config.headers = config.headers || {};
@@ -18,14 +19,13 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config;
 });
 
-// 🔁 CONTROLE GLOBAL
+// 🔁 controle
 let isRefreshing = false;
 let failedQueue: {
   resolve: (token: string) => void;
   reject: (err: any) => void;
 }[] = [];
 
-// processa fila
 const processQueue = (error: any, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) prom.reject(error);
@@ -35,25 +35,25 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
-// 🔁 RESPONSE → refresh automático
 api.interceptors.response.use(
   (response) => response,
-
   async (error: AxiosError) => {
     const originalRequest: any = error.config;
 
-    if (!error.response || error.response.status !== 401) {
+    if (!error.response) {
       return Promise.reject(error);
     }
 
-    // evita loop infinito
+    if (error.response.status !== 401) {
+      return Promise.reject(error);
+    }
+
     if (originalRequest._retry) {
       return Promise.reject(error);
     }
 
     originalRequest._retry = true;
 
-    // se já está atualizando token → fila
     if (isRefreshing) {
       return new Promise((resolve, reject) => {
         failedQueue.push({ resolve, reject });
@@ -75,8 +75,12 @@ api.interceptors.response.use(
 
       const data = await refreshTokenRequest(refreshToken);
 
-      const newAccessToken = data.data.accessToken;
-      const newRefreshToken = data.data.refreshToken;
+      const newAccessToken = data?.accessToken || data?.data?.accessToken;
+      const newRefreshToken = data?.refreshToken || data?.data?.refreshToken;
+
+      if (!newAccessToken || !newRefreshToken) {
+        throw new Error("Refresh inválido");
+      }
 
       localStorage.setItem("accessToken", newAccessToken);
       localStorage.setItem("refreshToken", newRefreshToken);
@@ -93,7 +97,6 @@ api.interceptors.response.use(
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
 
-      // redireciona para login
       window.location.href = "/";
 
       return Promise.reject(err);

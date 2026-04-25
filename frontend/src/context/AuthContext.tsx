@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { getMe } from "../services/userService";
 import type { User } from "../types/auth.types";
+import { getAccessToken, setTokens, clearTokens } from "../store/auth.store";
 
 type AuthContextType = {
   user: User | null;
@@ -21,7 +22,6 @@ export const AuthProvider = ({ children }: Props) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 🔥 NORMALIZADOR (AGORA COM PERMISSIONS)
   const normalizeUser = (res: any): User | null => {
     if (!res) return null;
 
@@ -36,15 +36,16 @@ export const AuthProvider = ({ children }: Props) => {
       name: userData.name,
       email: userData.email,
       role: userData.role,
-      permissions: userData.permissions || [], // 🔥 aqui entra RBAC real
+      permissions: userData.permissions || [],
     };
   };
 
   useEffect(() => {
     const init = async () => {
-      const token = localStorage.getItem("accessToken");
+      const token = getAccessToken();
 
       if (!token) {
+        setUser(null);
         setLoading(false);
         return;
       }
@@ -53,14 +54,11 @@ export const AuthProvider = ({ children }: Props) => {
         const response = await getMe();
         const userData = normalizeUser(response);
 
-        console.log("USER NORMALIZED:", userData);
-
         setUser(userData);
       } catch (error) {
         console.error("Erro ao validar token", error);
 
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
+        clearTokens();
         setUser(null);
       } finally {
         setLoading(false);
@@ -71,23 +69,29 @@ export const AuthProvider = ({ children }: Props) => {
   }, []);
 
   const login = async (accessToken: string, refreshToken: string) => {
-    localStorage.setItem("accessToken", accessToken);
-    localStorage.setItem("refreshToken", refreshToken);
+    setLoading(true);
+
+    setTokens(accessToken, refreshToken);
 
     try {
       const response = await getMe();
       const userData = normalizeUser(response);
 
+      if (!userData) {
+        throw new Error("Usuário inválido");
+      }
+
       setUser(userData);
     } catch (error) {
       console.error("Erro ao carregar usuário após login", error);
       logout();
+    } finally {
+      setLoading(false);
     }
   };
 
   const logout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
+    clearTokens();
     setUser(null);
 
     if (window.location.pathname !== "/") {

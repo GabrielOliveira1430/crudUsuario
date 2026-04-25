@@ -9,19 +9,20 @@ export default function RoleRoute({ roles }: Props) {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <p>Carregando...</p>;
+    return (
+      <p style={{ textAlign: "center", marginTop: 40 }}>
+        Carregando sessão...
+      </p>
+    );
   }
 
-  // ❌ não logado
   if (!user) {
     return <Navigate to="/" replace />;
   }
 
-  // ❌ sem permissão
   if (!roles.includes(user.role)) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // ✅ autorizado
   return <Outlet />;
 }

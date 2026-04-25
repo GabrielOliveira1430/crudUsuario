@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { forgotPasswordRequest } from "../services/auth.service";
+import { useTheme } from "../hooks/useTheme";
+import Button from "../components/Button";
+import Input from "../components/Input";
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
+  const { theme } = useTheme();
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,29 +32,65 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Recuperar Senha</h1>
+    <div style={container}>
+      <div style={{ ...card, background: theme.colors.card }}>
+        <h1 style={title}>Recuperar senha</h1>
+        <p style={subtitle}>Enviaremos um link para seu email</p>
 
-      <input
-        placeholder="Seu email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
+        <div style={form}>
+          <Input
+            placeholder="Seu email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
 
-      <br /><br />
+          <Button onClick={handleSubmit} loading={loading} fullWidth>
+            Enviar
+          </Button>
+        </div>
 
-      <button onClick={handleSubmit} disabled={loading}>
-        {loading ? "Enviando..." : "Enviar"}
-      </button>
-
-      <br /><br />
-
-      <span
-        style={{ cursor: "pointer", color: "blue" }}
-        onClick={() => navigate("/")}
-      >
-        Voltar para login
-      </span>
+        <span style={link} onClick={() => navigate("/")}>
+          Voltar para login
+        </span>
+      </div>
     </div>
   );
 }
+
+// estilos (mesmos do Register)
+const container: React.CSSProperties = {
+  height: "100vh",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
+const card: React.CSSProperties = {
+  width: 350,
+  padding: 30,
+  borderRadius: 12,
+  boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+  display: "flex",
+  flexDirection: "column",
+  gap: 20,
+};
+
+const title = { textAlign: "center" } as React.CSSProperties;
+
+const subtitle: React.CSSProperties = {
+  textAlign: "center",
+  fontSize: 14,
+  opacity: 0.7,
+};
+
+const form: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 12,
+};
+
+const link: React.CSSProperties = {
+  textAlign: "center",
+  cursor: "pointer",
+  color: "#6366f1",
+};

@@ -6,7 +6,6 @@ import Dashboard from "../pages/Dashboard";
 import Profile from "../pages/Profile";
 import Admin from "../pages/Admin";
 
-// 🆕 novas páginas
 import Register from "../pages/Register";
 import ForgotPassword from "../pages/ForgotPassword";
 import ResetPassword from "../pages/ResetPassword";
@@ -18,16 +17,15 @@ import MainLayout from "../layouts/MainLayout";
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* 🔓 PÚBLICAS */}
+      {/* públicas */}
       <Route path="/" element={<Login />} />
       <Route path="/verify-2fa" element={<Verify2FA />} />
 
-      {/* 🆕 NOVAS ROTAS */}
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
-      {/* 🔒 USUÁRIO LOGADO */}
+      {/* usuário logado */}
       <Route element={<PrivateRoute />}>
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
@@ -35,7 +33,7 @@ export default function AppRoutes() {
         </Route>
       </Route>
 
-      {/* 🔐 ADMIN */}
+      {/* admin */}
       <Route element={<RoleRoute roles={["ADMIN"]} />}>
         <Route element={<MainLayout />}>
           <Route path="/admin" element={<Admin />} />
