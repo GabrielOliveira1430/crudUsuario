@@ -13,6 +13,12 @@ enum Role {
   ADMIN
 }
 
+// 💰 PLANOS
+enum Plan {
+  FREE
+  PRO
+}
+
 model User {
   id        Int     @id @default(autoincrement())
   name      String
@@ -20,6 +26,9 @@ model User {
   password  String
   role      Role    @default(USER)
   isActive  Boolean @default(true)
+
+  // 💰 PLANO DO USUÁRIO
+  plan      Plan    @default(FREE)
 
   // 🔐 Segurança
   loginAttempts Int       @default(0)
@@ -39,8 +48,8 @@ model User {
   // 🔗 Relacionamentos
   refreshTokens        RefreshToken[]
   passwordResetTokens  PasswordResetToken[]
-  auditLogs            AuditLog[]   // ✅ relação adicionada
-
+  auditLogs            AuditLog[]
+  usages               Usage[]   // 🔥 relação adicionada
 }
 
 model RefreshToken {
@@ -107,4 +116,16 @@ model AuditLog {
   createdAt  DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id])
+}
+
+// 📊 USO (RATE LIMIT / CONTROLE)
+model Usage {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  date      DateTime
+  count     Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
 }
