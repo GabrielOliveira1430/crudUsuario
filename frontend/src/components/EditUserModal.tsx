@@ -16,14 +16,11 @@ export default function EditUserModal({ user, onClose, onSuccess }: Props) {
   const [name, setName] = useState(user?.name || "");
 
   const handleSave = async () => {
-    await toast.promise(
-      updateUser(user.id, { name }),
-      {
-        loading: "Salvando...",
-        success: "Usuário atualizado!",
-        error: "Erro ao atualizar",
-      }
-    );
+    await toast.promise(updateUser(user.id, { name }), {
+      loading: "Salvando...",
+      success: "Usuário atualizado!",
+      error: "Erro ao atualizar",
+    });
 
     onSuccess();
     onClose();
@@ -32,9 +29,8 @@ export default function EditUserModal({ user, onClose, onSuccess }: Props) {
   return (
     <div style={overlay}>
       <motion.div
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.2 }}
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
         style={{ ...modal, background: theme.colors.card }}
       >
         <h2 style={{ color: theme.colors.text }}>Editar Usuário</h2>

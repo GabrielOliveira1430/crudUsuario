@@ -44,7 +44,6 @@ export default function Dashboard() {
   const total = data?.total || 0;
   const totalPages = data?.lastPage || 1;
 
-  // 🔐 Só ADMIN pode criar usuário
   const canCreateUser = user?.role === "ADMIN";
 
   const sortedUsers = useMemo(() => {
@@ -100,7 +99,6 @@ export default function Dashboard() {
 
   return (
     <>
-      {/* HEADER */}
       <div style={headerBox(theme)}>
         <div>
           <h1 style={title(theme)}>Dashboard</h1>
@@ -127,7 +125,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* CARDS */}
       {isLoading ? (
         <SkeletonCards />
       ) : (
@@ -138,7 +135,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* GRÁFICOS */}
       {statsLoading ? (
         <div style={{ display: "flex", gap: 20 }}>
           <SkeletonChart />
@@ -148,7 +144,6 @@ export default function Dashboard() {
         <UserCharts growth={growth} roles={roles} />
       )}
 
-      {/* BUSCA */}
       <div style={{ marginTop: 30 }}>
         <input
           placeholder="Buscar usuário..."
@@ -161,7 +156,6 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* TABELA */}
       {isLoading ? (
         <SkeletonTable />
       ) : (
@@ -190,12 +184,14 @@ export default function Dashboard() {
                     <td style={td(theme)}>{u.email}</td>
                     <td style={td(theme)}>{u.role}</td>
                     <td style={td(theme)}>
-                      <button
-                        onClick={() => setSelectedUser(u)}
-                        style={editBtn}
-                      >
-                        Editar
-                      </button>
+                      {can("user.update") && (
+                        <button
+                          onClick={() => setSelectedUser(u)}
+                          style={editBtn}
+                        >
+                          Editar
+                        </button>
+                      )}
 
                       {can("user.delete") && (
                         <button
@@ -220,8 +216,7 @@ export default function Dashboard() {
         </>
       )}
 
-      {/* MODAIS */}
-      {selectedUser && (
+      {selectedUser && can("user.update") && (
         <EditUserModal
           user={selectedUser}
           onClose={() => setSelectedUser(null)}
@@ -243,7 +238,7 @@ export default function Dashboard() {
   );
 }
 
-/* 🎨 ESTILOS */
+/* estilos iguais */
 
 const headerBox = (theme: any) => ({
   display: "flex",
