@@ -24,7 +24,7 @@ type UpdateUserDTO = {
 };
 
 /**
- * 🔐 Criar usuário (SEGURO)
+ * 🔐 Criar usuário
  */
 export const create = async (data: CreateUserDTO) => {
   const exists = await prisma.user.findUnique({
@@ -50,12 +50,14 @@ export const create = async (data: CreateUserDTO) => {
       email: data.email,
       password: hashedPassword,
       role,
+      plan: 'FREE',
     },
     select: {
       id: true,
       name: true,
       email: true,
       role: true,
+      plan: true,
       createdAt: true,
     },
   });
@@ -64,7 +66,7 @@ export const create = async (data: CreateUserDTO) => {
 };
 
 /**
- * Buscar perfil do usuário logado
+ * 👤 Perfil
  */
 export const getProfile = async (userId: number) => {
   const user = await prisma.user.findUnique({
@@ -74,6 +76,7 @@ export const getProfile = async (userId: number) => {
       name: true,
       email: true,
       role: true,
+      plan: true,
       createdAt: true,
     },
   });
@@ -86,7 +89,7 @@ export const getProfile = async (userId: number) => {
 };
 
 /**
- * 🔥 LISTAGEM CORRIGIDA (PADRÃO FRONTEND)
+ * 📋 Listagem
  */
 export const getAll = async (
   page: number,
@@ -100,37 +103,21 @@ export const getAll = async (
   if (filters?.search) {
     where.AND.push({
       OR: [
-        {
-          name: {
-            contains: filters.search,
-            mode: 'insensitive',
-          },
-        },
-        {
-          email: {
-            contains: filters.search,
-            mode: 'insensitive',
-          },
-        },
+        { name: { contains: filters.search, mode: 'insensitive' } },
+        { email: { contains: filters.search, mode: 'insensitive' } },
       ],
     });
   }
 
   if (filters?.name) {
     where.AND.push({
-      name: {
-        contains: filters.name,
-        mode: 'insensitive',
-      },
+      name: { contains: filters.name, mode: 'insensitive' },
     });
   }
 
   if (filters?.email) {
     where.AND.push({
-      email: {
-        contains: filters.email,
-        mode: 'insensitive',
-      },
+      email: { contains: filters.email, mode: 'insensitive' },
     });
   }
 
@@ -169,6 +156,7 @@ export const getAll = async (
         name: true,
         email: true,
         role: true,
+        plan: true,
         createdAt: true,
       },
     }),
@@ -177,7 +165,6 @@ export const getAll = async (
     }),
   ]);
 
-  // 🔥 AQUI ESTÁ A CORREÇÃO
   return {
     users,
     total,
@@ -188,7 +175,7 @@ export const getAll = async (
 };
 
 /**
- * Buscar usuário por ID
+ * 🔍 Buscar por ID
  */
 export const getById = async (id: number) => {
   const user = await prisma.user.findUnique({
@@ -198,6 +185,7 @@ export const getById = async (id: number) => {
       name: true,
       email: true,
       role: true,
+      plan: true,
       createdAt: true,
     },
   });
@@ -210,7 +198,7 @@ export const getById = async (id: number) => {
 };
 
 /**
- * 🔐 Atualizar usuário
+ * ✏️ Atualizar
  */
 export const update = async (id: number, data: UpdateUserDTO) => {
   const exists = await prisma.user.findUnique({
@@ -243,6 +231,7 @@ export const update = async (id: number, data: UpdateUserDTO) => {
       name: true,
       email: true,
       role: true,
+      plan: true,
       updatedAt: true,
     },
   });
@@ -251,7 +240,7 @@ export const update = async (id: number, data: UpdateUserDTO) => {
 };
 
 /**
- * Deletar usuário
+ * 🗑 Deletar
  */
 export const remove = async (id: number) => {
   const exists = await prisma.user.findUnique({
@@ -271,7 +260,7 @@ export const remove = async (id: number) => {
 };
 
 /**
- * 📊 STATS (já estava correto)
+ * 📊 STATS
  */
 export const getUserStats = async () => {
   const users = await prisma.user.findMany({
@@ -284,27 +273,23 @@ export const getUserStats = async () => {
   const growthMap: Record<string, number> = {};
 
   users.forEach((user) => {
-    const date = new Date(user.createdAt);
-    const month = date.toLocaleString('pt-BR', { month: 'short' });
+    const month = new Date(user.createdAt).toLocaleString('pt-BR', {
+      month: 'short',
+    });
 
     growthMap[month] = (growthMap[month] || 0) + 1;
   });
 
-  const growth = Object.entries(growthMap).map(([month, total]) => ({
-    name: month,
-    users: total,
+  const growth = Object.entries(growthMap).map(([name, users]) => ({
+    name,
+    users,
   }));
-
-  const roles = {
-    ADMIN: users.filter((u) => u.role === Role.ADMIN).length,
-    USER: users.filter((u) => u.role === Role.USER).length,
-  };
 
   return {
     growth,
-    roles,
+    roles: {
+      ADMIN: users.filter((u) => u.role === Role.ADMIN).length,
+      USER: users.filter((u) => u.role === Role.USER).length,
+    },
   };
-
-  
 };
-

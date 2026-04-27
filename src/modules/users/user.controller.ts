@@ -10,7 +10,7 @@ export const createUser = async (req: Request, res: Response) => {
 
     return res.status(201).json({
       success: true,
-      data: user
+      data: user,
     });
   } catch (err: any) {
     return res.status(400).json({ error: err.message });
@@ -18,7 +18,7 @@ export const createUser = async (req: Request, res: Response) => {
 };
 
 /**
- * Perfil do usuário logado
+ * Perfil
  */
 export const me = async (req: Request, res: Response) => {
   try {
@@ -28,7 +28,7 @@ export const me = async (req: Request, res: Response) => {
 
     return res.json({
       success: true,
-      data: user
+      data: user,
     });
   } catch (err: any) {
     return res.status(404).json({ error: err.message });
@@ -36,31 +36,18 @@ export const me = async (req: Request, res: Response) => {
 };
 
 /**
- * 🔥 LISTAR USUÁRIOS (CORRIGIDO)
+ * Listagem
  */
 export const getUsers = async (req: Request, res: Response) => {
   try {
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 10;
 
-    const result = await service.getAll(page, limit, {
-      name: req.query.name as string,
-      email: req.query.email as string,
-      search: req.query.search as string,
-      startDate: req.query.startDate as string,
-      endDate: req.query.endDate as string,
-      sort: req.query.sort as string
-    });
+    const result = await service.getAll(page, limit, req.query as any);
 
     return res.json({
       success: true,
-      data: {
-        users: result.users,
-        total: result.total,
-        page: result.page,
-        perPage: result.perPage,
-        lastPage: result.lastPage,
-      }
+      data: result,
     });
   } catch (err: any) {
     return res.status(400).json({ error: err.message });
@@ -68,7 +55,7 @@ export const getUsers = async (req: Request, res: Response) => {
 };
 
 /**
- * Buscar usuário por ID
+ * Buscar por ID
  */
 export const getUser = async (req: Request, res: Response) => {
   try {
@@ -76,7 +63,7 @@ export const getUser = async (req: Request, res: Response) => {
 
     return res.json({
       success: true,
-      data: user
+      data: user,
     });
   } catch (err: any) {
     return res.status(404).json({ error: err.message });
@@ -84,7 +71,7 @@ export const getUser = async (req: Request, res: Response) => {
 };
 
 /**
- * Atualizar usuário
+ * Atualizar
  */
 export const updateUser = async (req: Request, res: Response) => {
   try {
@@ -95,7 +82,7 @@ export const updateUser = async (req: Request, res: Response) => {
 
     return res.json({
       success: true,
-      data: user
+      data: user,
     });
   } catch (err: any) {
     return res.status(400).json({ error: err.message });
@@ -103,17 +90,15 @@ export const updateUser = async (req: Request, res: Response) => {
 };
 
 /**
- * Deletar usuário
+ * Deletar
  */
 export const deleteUser = async (req: Request, res: Response) => {
   try {
-    const result = await service.remove(
-      Number(req.params.id)
-    );
+    const result = await service.remove(Number(req.params.id));
 
     return res.json({
       success: true,
-      data: result
+      data: result,
     });
   } catch (err: any) {
     return res.status(400).json({ error: err.message });
@@ -121,7 +106,7 @@ export const deleteUser = async (req: Request, res: Response) => {
 };
 
 /**
- * 📊 STATS (DASHBOARD)
+ * Stats
  */
 export const stats = async (req: Request, res: Response) => {
   try {

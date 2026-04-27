@@ -1,15 +1,7 @@
 import { Router } from 'express';
 import { Role } from '@prisma/client';
 
-import {
-  createUser,
-  me,
-  getUsers,
-  getUser,
-  updateUser,
-  deleteUser,
-  stats
-} from './user.controller';
+import * as controller from './user.controller';
 
 import { authMiddleware } from '../../shared/middlewares/auth.middleware';
 import { roleMiddleware } from '../../shared/middlewares/role.middleware';
@@ -18,13 +10,13 @@ import { validate } from '../../shared/middlewares/validate.middleware';
 
 import {
   createUserSchema,
-  updateUserSchema
+  updateUserSchema,
 } from './user.schema';
 
 const router = Router();
 
 /**
- * 🔐 CRIAR USUÁRIO (AGORA PROTEGIDO)
+ * Criar usuário
  */
 router.post(
   '/',
@@ -32,29 +24,27 @@ router.post(
   roleMiddleware(Role.ADMIN),
   permissionMiddleware('user:create'),
   validate(createUserSchema),
-  createUser
+  controller.createUser
 );
 
 /**
- * 🔐 ROTAS PROTEGIDAS
+ * Perfil
  */
-
-// Usuário logado
-router.get('/me', authMiddleware, me);
+router.get('/me', authMiddleware, controller.me);
 
 /**
- * 📊 STATS
+ * Stats
  */
 router.get(
   '/stats',
   authMiddleware,
   roleMiddleware(Role.ADMIN),
   permissionMiddleware('user:read'),
-  stats
+  controller.stats
 );
 
 /**
- * 🔐 ADMIN
+ * Admin
  */
 router.get(
   '/admin',
@@ -66,15 +56,14 @@ router.get(
 );
 
 /**
- * 🔐 USERS (RBAC)
+ * Users
  */
-
 router.get(
   '/',
   authMiddleware,
   roleMiddleware(Role.ADMIN),
   permissionMiddleware('user:read'),
-  getUsers
+  controller.getUsers
 );
 
 router.get(
@@ -82,7 +71,7 @@ router.get(
   authMiddleware,
   roleMiddleware(Role.ADMIN),
   permissionMiddleware('user:read'),
-  getUser
+  controller.getUser
 );
 
 router.put(
@@ -91,7 +80,7 @@ router.put(
   roleMiddleware(Role.ADMIN),
   permissionMiddleware('user:update'),
   validate(updateUserSchema),
-  updateUser
+  controller.updateUser
 );
 
 router.delete(
@@ -99,7 +88,7 @@ router.delete(
   authMiddleware,
   roleMiddleware(Role.ADMIN),
   permissionMiddleware('user:delete'),
-  deleteUser
+  controller.deleteUser
 );
 
 export default router;
