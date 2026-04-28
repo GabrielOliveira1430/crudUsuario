@@ -49,7 +49,8 @@ model User {
   refreshTokens        RefreshToken[]
   passwordResetTokens  PasswordResetToken[]
   auditLogs            AuditLog[]
-  usages               Usage[]   // 🔥 relação adicionada
+  usages               Usage[]
+  numberHistory        NumberHistory[] // 🔥 relação adicionada
 }
 
 model RefreshToken {
@@ -128,4 +129,17 @@ model Usage {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date])
+}
+
+// 🔢 HISTÓRICO DE NÚMEROS
+model NumberHistory {
+  id        Int      @id @default(autoincrement())
+
+  userId    Int
+  numbers   String[]
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
