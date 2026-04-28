@@ -20,23 +20,23 @@ enum Plan {
 }
 
 model User {
-  id        Int     @id @default(autoincrement())
-  name      String
-  email     String  @unique
-  password  String
-  role      Role    @default(USER)
-  isActive  Boolean @default(true)
+  id       Int     @id @default(autoincrement())
+  name     String
+  email    String  @unique
+  password String
+  role     Role    @default(USER)
+  isActive Boolean @default(true)
 
   // 💰 PLANO DO USUÁRIO
-  plan      Plan    @default(FREE)
+  plan Plan @default(FREE)
 
   // 🔐 Segurança
   loginAttempts Int       @default(0)
   lockUntil     DateTime?
 
   // 🛡 Monitoramento
-  lastLoginIp    String?
-  lastUserAgent  String?
+  lastLoginIp   String?
+  lastUserAgent String?
 
   // 🔐 2FA
   twoFactorCode    String?
@@ -46,19 +46,19 @@ model User {
   updatedAt DateTime @updatedAt
 
   // 🔗 Relacionamentos
-  refreshTokens        RefreshToken[]
-  passwordResetTokens  PasswordResetToken[]
-  auditLogs            AuditLog[]
-  usages               Usage[]
-  numberHistory        NumberHistory[] // 🔥 relação adicionada
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  auditLogs           AuditLog[]
+  usages              Usage[]
+  numberHistory       NumberHistory[] // 🔥 relação adicionada
 }
 
 model RefreshToken {
-  id        Int      @id @default(autoincrement())
-  token     String   @unique
+  id    Int    @id @default(autoincrement())
+  token String @unique
 
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   expiresAt DateTime
   createdAt DateTime @default(now())
@@ -67,11 +67,11 @@ model RefreshToken {
 }
 
 model PasswordResetToken {
-  id        Int      @id @default(autoincrement())
-  token     String   @unique
+  id    Int    @id @default(autoincrement())
+  token String @unique
 
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   expiresAt DateTime
   createdAt DateTime @default(now())
@@ -81,17 +81,17 @@ model PasswordResetToken {
 
 // 🔐 PERMISSÕES
 model Permission {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
+  id   Int    @id @default(autoincrement())
+  name String @unique
 
-  roles     RolePermission[]
+  roles RolePermission[]
 
   createdAt DateTime @default(now())
 }
 
 // 🔗 RELAÇÃO ROLE ↔ PERMISSION
 model RolePermission {
-  id           Int @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
   role         Role
   permissionId Int
@@ -103,28 +103,28 @@ model RolePermission {
 
 // 🧾 AUDITORIA
 model AuditLog {
-  id         Int      @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  userId     Int?
-  action     String
-  entity     String
-  entityId   Int?
-  metadata   Json?
+  userId   Int?
+  action   String
+  entity   String
+  entityId Int?
+  metadata Json?
 
-  ip         String?
-  userAgent  String?
+  ip        String?
+  userAgent String?
 
-  createdAt  DateTime @default(now())
+  createdAt DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id])
 }
 
 // 📊 USO (RATE LIMIT / CONTROLE)
 model Usage {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  date      DateTime
-  count     Int      @default(0)
+  id     Int      @id @default(autoincrement())
+  userId Int
+  date   DateTime
+  count  Int      @default(0)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -133,7 +133,7 @@ model Usage {
 
 // 🔢 HISTÓRICO DE NÚMEROS
 model NumberHistory {
-  id        Int      @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
   userId    Int
   numbers   String[]
