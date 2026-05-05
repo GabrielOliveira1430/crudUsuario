@@ -26,13 +26,13 @@ export const refreshTokenRequest = async (refreshToken: string) => {
   return data;
 };
 
-// REGISTER
+// 🔥 REGISTRO (CORRIGIDO)
 export const registerRequest = async (
   name: string,
   email: string,
   password: string
 ) => {
-  const { data } = await api.post("/users", {
+  const { data } = await api.post("/users/register", {
     name,
     email,
     password,
@@ -51,21 +51,11 @@ export const forgotPasswordRequest = async (email: string) => {
 // RESET
 export const resetPasswordRequest = async (
   token: string,
-  newPassword: string
+  password: string
 ) => {
   const { data } = await api.post("/auth/reset-password", {
     token,
-    newPassword,
+    password,
   });
   return data;
-};
-
-// PERMISSIONS
-export const getPermissions = async () => {
-  try {
-    const { data } = await api.get("/auth/permissions");
-    return data;
-  } catch {
-    return [];
-  }
 };
