@@ -15,6 +15,7 @@ export default function CreateUserModal({ onClose, onSuccess }: Props) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState("USER");
 
   const handleCreate = async () => {
     if (!name || !email || !password) {
@@ -23,11 +24,17 @@ export default function CreateUserModal({ onClose, onSuccess }: Props) {
     }
 
     await toast.promise(
-      createUser({ name, email, password }),
+      createUser({
+        name,
+        email,
+        password,
+        role,
+      }),
       {
         loading: "Criando...",
         success: "Usuário criado!",
-        error: "Erro ao criar",
+        error: (err: any) =>
+          err?.response?.data?.error || "Erro ao criar",
       }
     );
 
@@ -65,6 +72,15 @@ export default function CreateUserModal({ onClose, onSuccess }: Props) {
           onChange={(e) => setPassword(e.target.value)}
           style={input(theme)}
         />
+
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          style={input(theme)}
+        >
+          <option value="USER">USER</option>
+          <option value="ADMIN">ADMIN</option>
+        </select>
 
         <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
           <button onClick={onClose} style={cancelBtn}>

@@ -1,28 +1,39 @@
-import { Router } from 'express';
-import { Role } from '@prisma/client';
+// src/modules/user/user.routes.ts
 
-import * as controller from './user.controller';
+import { Router } from "express";
+import { Role } from "@prisma/client";
 
-import { authMiddleware } from '../../shared/middlewares/auth.middleware';
-import { roleMiddleware } from '../../shared/middlewares/role.middleware';
-import { permissionMiddleware } from '../../shared/middlewares/permission.middleware';
-import { validate } from '../../shared/middlewares/validate.middleware';
+import * as controller from "./user.controller";
+
+import { authMiddleware } from "../../shared/middlewares/auth.middleware";
+import { roleMiddleware } from "../../shared/middlewares/role.middleware";
+import { permissionMiddleware } from "../../shared/middlewares/permission.middleware";
+import { validate } from "../../shared/middlewares/validate.middleware";
 
 import {
   createUserSchema,
   updateUserSchema,
-} from './user.schema';
+} from "./user.schema";
 
 const router = Router();
+
+/**
+ * 🚀 UPGRADE PLAN (🔥 TEM QUE VIR ANTES DO /:id)
+ */
+router.patch(
+  "/upgrade",
+  authMiddleware,
+  controller.upgradePlan
+);
 
 /**
  * Criar usuário
  */
 router.post(
-  '/',
+  "/",
   authMiddleware,
   roleMiddleware(Role.ADMIN),
-  permissionMiddleware('user:create'),
+  permissionMiddleware("user:create"),
   validate(createUserSchema),
   controller.createUser
 );
@@ -30,64 +41,60 @@ router.post(
 /**
  * Perfil
  */
-router.get('/me', authMiddleware, controller.me);
+router.get("/me", authMiddleware, controller.me);
 
 /**
  * Stats
  */
 router.get(
-  '/stats',
+  "/stats",
   authMiddleware,
   roleMiddleware(Role.ADMIN),
-  permissionMiddleware('user:read'),
+  permissionMiddleware("user:read"),
   controller.stats
-);
-
-/**
- * Admin
- */
-router.get(
-  '/admin',
-  authMiddleware,
-  roleMiddleware(Role.ADMIN),
-  (req, res) => {
-    return res.json({ message: 'Área admin' });
-  }
 );
 
 /**
  * Users
  */
 router.get(
-  '/',
+  "/",
   authMiddleware,
   roleMiddleware(Role.ADMIN),
-  permissionMiddleware('user:read'),
+  permissionMiddleware("user:read"),
   controller.getUsers
 );
 
 router.get(
-  '/:id',
+  "/:id",
   authMiddleware,
   roleMiddleware(Role.ADMIN),
-  permissionMiddleware('user:read'),
+  permissionMiddleware("user:read"),
   controller.getUser
 );
 
 router.put(
-  '/:id',
+  "/:id",
   authMiddleware,
   roleMiddleware(Role.ADMIN),
-  permissionMiddleware('user:update'),
+  permissionMiddleware("user:update"),
   validate(updateUserSchema),
   controller.updateUser
 );
 
-router.delete(
-  '/:id',
+router.patch(
+  "/:id/role",
   authMiddleware,
   roleMiddleware(Role.ADMIN),
-  permissionMiddleware('user:delete'),
+  permissionMiddleware("user:update"),
+  controller.updateUserRole
+);
+
+router.delete(
+  "/:id",
+  authMiddleware,
+  roleMiddleware(Role.ADMIN),
+  permissionMiddleware("user:delete"),
   controller.deleteUser
 );
 

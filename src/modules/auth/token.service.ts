@@ -1,53 +1,96 @@
-import jwt, { JwtPayload } from 'jsonwebtoken';
-import crypto from 'crypto';
+import jwt, { JwtPayload } from "jsonwebtoken";
+import crypto from "crypto";
 
-const ACCESS_TOKEN_EXPIRES_IN = '15m';
-const REFRESH_TOKEN_EXPIRES_IN = '7d';
+const ACCESS_EXPIRES = "15m";
+const REFRESH_EXPIRES = "7d";
 
-const ISSUER = 'api-node-prisma';
-const AUDIENCE = 'users';
+const ISSUER = "api-node-prisma";
+const AUDIENCE = "users";
 
-export function generateAccessToken(userId: number, role?: string) {
+function assertSecrets() {
+  if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
+    throw new Error("JWT secrets não configurados");
+  }
+}
+
+// 🔐 ACCESS TOKEN
+export function generateAccessToken(
+  userId: number,
+  role?: string,
+  plan?: string
+) {
+  assertSecrets();
+
+  if (!userId) {
+    throw new Error("userId inválido ao gerar token");
+  }
+
   return jwt.sign(
     {
-      sub: String(userId),
-      role, // pode manter, mas não confie nele no middleware
+      sub: String(userId), // 🔥 sempre string
+      role: role || "USER",
+      plan: plan || "FREE",
       jti: crypto.randomUUID(),
     },
-    process.env.JWT_SECRET as string,
+    process.env.JWT_SECRET!,
     {
-      expiresIn: ACCESS_TOKEN_EXPIRES_IN,
+      expiresIn: ACCESS_EXPIRES,
       issuer: ISSUER,
       audience: AUDIENCE,
     }
   );
 }
 
+// 🔐 REFRESH TOKEN
 export function generateRefreshToken(userId: number) {
+  assertSecrets();
+
+  if (!userId) {
+    throw new Error("userId inválido ao gerar refresh token");
+  }
+
   return jwt.sign(
     {
       sub: String(userId),
       jti: crypto.randomUUID(),
     },
-    process.env.JWT_REFRESH_SECRET as string,
+    process.env.JWT_REFRESH_SECRET!,
     {
-      expiresIn: REFRESH_TOKEN_EXPIRES_IN,
+      expiresIn: REFRESH_EXPIRES,
       issuer: ISSUER,
       audience: AUDIENCE,
     }
   );
 }
 
+// 🔍 VERIFY ACCESS
 export function verifyAccessToken(token: string): JwtPayload {
-  return jwt.verify(token, process.env.JWT_SECRET as string, {
+  assertSecrets();
+
+  const decoded = jwt.verify(token, process.env.JWT_SECRET!, {
     issuer: ISSUER,
     audience: AUDIENCE,
   }) as JwtPayload;
+
+  if (!decoded.sub) {
+    throw new Error("Token inválido: sem sub");
+  }
+
+  return decoded;
 }
 
+// 🔍 VERIFY REFRESH
 export function verifyRefreshToken(token: string): JwtPayload {
-  return jwt.verify(token, process.env.JWT_REFRESH_SECRET as string, {
+  assertSecrets();
+
+  const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET!, {
     issuer: ISSUER,
     audience: AUDIENCE,
   }) as JwtPayload;
+
+  if (!decoded.sub) {
+    throw new Error("Refresh token inválido");
+  }
+
+  return decoded;
 }

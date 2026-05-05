@@ -45,12 +45,14 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // 🔗 Relacionamentos
+  // 🔗 RELACIONAMENTOS
   refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
   auditLogs           AuditLog[]
   usages              Usage[]
-  numberHistory       NumberHistory[] // 🔥 relação adicionada
+  numberHistory       NumberHistory[]
+
+  @@map("users")
 }
 
 model RefreshToken {
@@ -64,6 +66,7 @@ model RefreshToken {
   createdAt DateTime @default(now())
 
   @@index([userId])
+  @@map("refresh_tokens")
 }
 
 model PasswordResetToken {
@@ -77,6 +80,7 @@ model PasswordResetToken {
   createdAt DateTime @default(now())
 
   @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 // 🔐 PERMISSÕES
@@ -87,6 +91,8 @@ model Permission {
   roles RolePermission[]
 
   createdAt DateTime @default(now())
+
+  @@map("permissions")
 }
 
 // 🔗 RELAÇÃO ROLE ↔ PERMISSION
@@ -99,6 +105,7 @@ model RolePermission {
 
   @@unique([role, permissionId])
   @@index([role])
+  @@map("role_permissions")
 }
 
 // 🧾 AUDITORIA
@@ -117,6 +124,8 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
 }
 
 // 📊 USO (RATE LIMIT / CONTROLE)
@@ -129,17 +138,20 @@ model Usage {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date])
+  @@map("usages")
 }
 
-// 🔢 HISTÓRICO DE NÚMEROS
+// 🔢 HISTÓRICO DE NÚMEROS (🔥 AJUSTADO)
 model NumberHistory {
   id Int @id @default(autoincrement())
 
-  userId    Int
-  numbers   String[]
+  userId Int
+  numbers String[]
+
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@map("number_history")
 }

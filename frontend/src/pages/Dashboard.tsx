@@ -15,6 +15,7 @@ import UserCharts from "../components/UserCharts";
 import EditUserModal from "../components/EditUserModal";
 import CreateUserModal from "../components/CreateUserModal";
 import Pagination from "../components/Pagination";
+import UpgradeButton from "../components/UpgradeButton"; // 🔥 NOVO
 
 import SkeletonCards from "../components/SkeletonCards";
 import SkeletonTable from "../components/SkeletonTable";
@@ -81,7 +82,8 @@ export default function Dashboard() {
       .promise(deleteUser(id), {
         loading: "Deletando...",
         success: "Usuário removido",
-        error: "Erro ao deletar",
+        error: (err: any) =>
+          err?.response?.data?.error || "Erro ao deletar",
       })
       .catch(() => {
         queryClient.setQueryData(queryKey, previous);
@@ -99,6 +101,7 @@ export default function Dashboard() {
 
   return (
     <>
+      {/* HEADER */}
       <div style={headerBox(theme)}>
         <div>
           <h1 style={title(theme)}>Dashboard</h1>
@@ -108,6 +111,9 @@ export default function Dashboard() {
         </div>
 
         <div style={actions}>
+          {/* 🔥 BOTÃO STRIPE */}
+          {user?.plan !== "PRO" && <UpgradeButton />}
+
           {canCreateUser && (
             <button style={primaryBtn} onClick={() => setCreateOpen(true)}>
               + Novo usuário
@@ -125,6 +131,7 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* CARDS */}
       {isLoading ? (
         <SkeletonCards />
       ) : (
@@ -135,6 +142,7 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* GRÁFICOS */}
       {statsLoading ? (
         <div style={{ display: "flex", gap: 20 }}>
           <SkeletonChart />
@@ -144,6 +152,7 @@ export default function Dashboard() {
         <UserCharts growth={growth} roles={roles} />
       )}
 
+      {/* BUSCA */}
       <div style={{ marginTop: 30 }}>
         <input
           placeholder="Buscar usuário..."
@@ -156,6 +165,7 @@ export default function Dashboard() {
         />
       </div>
 
+      {/* TABELA */}
       {isLoading ? (
         <SkeletonTable />
       ) : (
@@ -216,6 +226,7 @@ export default function Dashboard() {
         </>
       )}
 
+      {/* MODAIS */}
       {selectedUser && can("user.update") && (
         <EditUserModal
           user={selectedUser}
@@ -238,7 +249,7 @@ export default function Dashboard() {
   );
 }
 
-/* estilos iguais */
+/* ================= ESTILOS ================= */
 
 const headerBox = (theme: any) => ({
   display: "flex",

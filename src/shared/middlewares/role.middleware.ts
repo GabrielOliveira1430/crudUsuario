@@ -22,7 +22,12 @@ export const roleMiddleware = (...allowedRoles: Role[]) => {
       });
     }
 
-    if (!allowedRoles.includes(user.role)) {
+    // 🔥 NORMALIZAÇÃO (EVITA BUG SILENCIOSO)
+    const userRole = user.role?.toUpperCase() as Role;
+
+    const allowed = allowedRoles.map(r => r.toUpperCase()) as Role[];
+
+    if (!allowed.includes(userRole)) {
       return res.status(403).json({
         success: false,
         error: "Sem permissão para este recurso",

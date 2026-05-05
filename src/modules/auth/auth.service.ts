@@ -73,7 +73,6 @@ export async function loginService(
     throw new Error('Credenciais inválidas');
   }
 
-  // 🔍 LOGIN SUSPEITO
   const suspicious =
     (user.lastLoginIp && user.lastLoginIp !== ip) ||
     (user.lastUserAgent && user.lastUserAgent !== userAgent);
@@ -93,18 +92,12 @@ export async function loginService(
     },
   });
 
-  // 🔥 ENVIO CONFIÁVEL (AGUARDANDO)
   try {
     console.log('📨 Enviando 2FA para:', user.email);
-
     await mailService.send2FACode(user.email, code);
-
     console.log('✅ Email 2FA enviado com sucesso');
   } catch (err) {
     console.error('❌ Falha ao enviar email 2FA:', err);
-
-    // ⚠️ opcional: você pode decidir bloquear login se falhar
-    // throw new Error('Erro ao enviar código de verificação');
   }
 
   return {
@@ -113,7 +106,7 @@ export async function loginService(
   };
 }
 
-// 🔐 VERIFY 2FA SERVICE
+// 🔐 VERIFY 2FA SERVICE (🔥 CORRIGIDO)
 export async function verify2FAService(email: string, code: string) {
   const user = await prisma.user.findUnique({
     where: { email },
@@ -122,6 +115,10 @@ export async function verify2FAService(email: string, code: string) {
       email: true,
       twoFactorCode: true,
       twoFactorExpires: true,
+
+      // 🔥 ESSENCIAL
+      role: true,
+      plan: true,
     },
   });
 
@@ -147,7 +144,13 @@ export async function verify2FAService(email: string, code: string) {
     },
   });
 
-  const accessToken = generateAccessToken(user.id);
+  // 🔥 AGORA COM ROLE + PLAN
+  const accessToken = generateAccessToken(
+    user.id,
+    user.role,
+    user.plan
+  );
+
   const refreshToken = generateRefreshToken(user.id);
 
   await prisma.refreshToken.create({
@@ -164,7 +167,7 @@ export async function verify2FAService(email: string, code: string) {
   };
 }
 
-// 🔄 REFRESH SERVICE
+// 🔄 REFRESH SERVICE (🔥 ATUALIZADO)
 export async function refreshService(userId: number, oldToken: string) {
   const tokenExists = await prisma.refreshToken.findUnique({
     where: { token: oldToken },
@@ -186,7 +189,21 @@ export async function refreshService(userId: number, oldToken: string) {
     where: { token: oldToken },
   });
 
-  const accessToken = generateAccessToken(userId);
+  // 🔥 BUSCAR USER COMPLETO
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      role: true,
+      plan: true,
+    },
+  });
+
+  const accessToken = generateAccessToken(
+    userId,
+    user?.role,
+    user?.plan
+  );
+
   const refreshToken = generateRefreshToken(userId);
 
   await prisma.refreshToken.create({

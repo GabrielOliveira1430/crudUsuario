@@ -46,20 +46,37 @@ export const getUserStats = async () => {
   );
 };
 
-// ➕ CREATE (NOVO)
+// ➕ CREATE
 export const createUser = async (body: any) => {
   const { data } = await api.post("/users", body);
   return data;
 };
 
-// ✏️ UPDATE
+// ✏️ UPDATE USER
 export const updateUser = async (id: number, body: any) => {
   const { data } = await api.put(`/users/${id}`, body);
   return data;
 };
 
-// 🗑️ DELETE
+// 🔁 UPDATE ROLE
+export const updateUserRole = async (
+  id: number,
+  body: { role: string }
+) => {
+  const { data } = await api.patch(`/users/${id}/role`, body);
+  return data;
+};
+
+// 🗑 DELETE
 export const deleteUser = async (id: number) => {
   const { data } = await api.delete(`/users/${id}`);
+  return data;
+};
+
+/**
+ * 🚀 UPGRADE PARA PRO (🔥 FALTAVA ISSO)
+ */
+export const upgradePlan = async () => {
+  const { data } = await api.patch("/users/upgrade");
   return data;
 };

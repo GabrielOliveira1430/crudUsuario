@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useUsers } from "../hooks/useUsers";
-import { updateUser, deleteUser } from "../services/userService";
+import { deleteUser } from "../services/userService";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../context/AuthContext";
@@ -27,17 +27,6 @@ export default function Admin() {
   const totalPages = data?.lastPage || 1;
 
   const totalAdmins = users.filter((u: any) => u.role === "ADMIN").length;
-
-  // 🔥 UPDATE ROLE
-  const handleRoleChange = async (id: number, role: string) => {
-    await toast.promise(updateUser(id, { role }), {
-      loading: "Atualizando...",
-      success: "Role atualizada",
-      error: "Erro ao atualizar",
-    });
-
-    queryClient.invalidateQueries({ queryKey: ["users"] });
-  };
 
   // 🔥 DELETE
   const handleDelete = async (id: number) => {
@@ -109,19 +98,6 @@ export default function Admin() {
                           style={editBtn}
                         >
                           Editar
-                        </button>
-
-                        <button
-                          onClick={() =>
-                            handleRoleChange(
-                              u.id,
-                              u.role === "ADMIN" ? "USER" : "ADMIN"
-                            )
-                          }
-                          style={roleBtn}
-                          disabled={isMe}
-                        >
-                          Alternar Role
                         </button>
 
                         <button
@@ -205,16 +181,6 @@ const badge = {
 const editBtn = {
   marginRight: 6,
   background: "#4f46e5",
-  color: "#fff",
-  border: "none",
-  padding: "6px 10px",
-  borderRadius: 6,
-  cursor: "pointer",
-};
-
-const roleBtn = {
-  marginRight: 6,
-  background: "#f59e0b",
   color: "#fff",
   border: "none",
   padding: "6px 10px",

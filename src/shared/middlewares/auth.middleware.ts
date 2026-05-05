@@ -84,6 +84,7 @@ export const authMiddleware = async (
     (req as any).user = {
       id: user.id,
       role: user.role,
+      plan: user.plan, // 🔥 ESSENCIAL PRO SAAS
     };
 
     console.log('USER AUTH FINAL:', (req as any).user);

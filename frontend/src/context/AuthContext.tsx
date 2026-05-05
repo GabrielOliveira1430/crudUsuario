@@ -10,6 +10,7 @@ type AuthContextType = {
   loading: boolean;
   login: (accessToken: string, refreshToken: string) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>; // 🔥 NOVO
 };
 
 const AuthContext = createContext({} as AuthContextType);
@@ -22,6 +23,9 @@ export const AuthProvider = ({ children }: Props) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  /**
+   * 🔄 NORMALIZA RESPOSTA
+   */
   const normalizeUser = (res: any): User | null => {
     if (!res) return null;
 
@@ -36,10 +40,14 @@ export const AuthProvider = ({ children }: Props) => {
       name: userData.name,
       email: userData.email,
       role: userData.role,
+      plan: userData.plan || "FREE",
       permissions: userData.permissions || [],
     };
   };
 
+  /**
+   * 🚀 INIT
+   */
   useEffect(() => {
     const init = async () => {
       const token = getAccessToken();
@@ -68,6 +76,9 @@ export const AuthProvider = ({ children }: Props) => {
     init();
   }, []);
 
+  /**
+   * 🔐 LOGIN
+   */
   const login = async (accessToken: string, refreshToken: string) => {
     setLoading(true);
 
@@ -77,9 +88,7 @@ export const AuthProvider = ({ children }: Props) => {
       const response = await getMe();
       const userData = normalizeUser(response);
 
-      if (!userData) {
-        throw new Error("Usuário inválido");
-      }
+      if (!userData) throw new Error("Usuário inválido");
 
       setUser(userData);
     } catch (error) {
@@ -90,6 +99,23 @@ export const AuthProvider = ({ children }: Props) => {
     }
   };
 
+  /**
+   * 🔄 REFRESH USER (🔥 ESSENCIAL PRO BOTÃO PRO)
+   */
+  const refreshUser = async () => {
+    try {
+      const response = await getMe();
+      const userData = normalizeUser(response);
+
+      setUser(userData);
+    } catch (error) {
+      console.error("Erro ao atualizar usuário", error);
+    }
+  };
+
+  /**
+   * 🚪 LOGOUT
+   */
   const logout = () => {
     clearTokens();
     setUser(null);
@@ -107,6 +133,7 @@ export const AuthProvider = ({ children }: Props) => {
         loading,
         login,
         logout,
+        refreshUser, // 🔥 NOVO
       }}
     >
       {children}

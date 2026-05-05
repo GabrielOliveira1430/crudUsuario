@@ -1,8 +1,8 @@
-import { Request, Response } from 'express';
-import * as service from './user.service';
+import { Request, Response } from "express";
+import * as service from "./user.service";
 
 /**
- * Criar usuário
+ * 🔐 Criar usuário
  */
 export const createUser = async (req: Request, res: Response) => {
   try {
@@ -13,16 +13,19 @@ export const createUser = async (req: Request, res: Response) => {
       data: user,
     });
   } catch (err: any) {
-    return res.status(400).json({ error: err.message });
+    return res.status(err.statusCode || 400).json({
+      success: false,
+      error: err.message || "Erro ao criar usuário",
+    });
   }
 };
 
 /**
- * Perfil
+ * 👤 Perfil logado
  */
 export const me = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = (req as any).user?.id;
 
     const user = await service.getProfile(userId);
 
@@ -31,12 +34,15 @@ export const me = async (req: Request, res: Response) => {
       data: user,
     });
   } catch (err: any) {
-    return res.status(404).json({ error: err.message });
+    return res.status(err.statusCode || 404).json({
+      success: false,
+      error: err.message || "Usuário não encontrado",
+    });
   }
 };
 
 /**
- * Listagem
+ * 📋 Listagem
  */
 export const getUsers = async (req: Request, res: Response) => {
   try {
@@ -50,63 +56,129 @@ export const getUsers = async (req: Request, res: Response) => {
       data: result,
     });
   } catch (err: any) {
-    return res.status(400).json({ error: err.message });
+    return res.status(err.statusCode || 400).json({
+      success: false,
+      error: err.message || "Erro ao listar usuários",
+    });
   }
 };
 
 /**
- * Buscar por ID
+ * 🔍 Buscar por ID
  */
 export const getUser = async (req: Request, res: Response) => {
   try {
-    const user = await service.getById(Number(req.params.id));
+    const id = Number(req.params.id);
+
+    if (isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        error: "ID inválido",
+      });
+    }
+
+    const user = await service.getById(id);
 
     return res.json({
       success: true,
       data: user,
     });
   } catch (err: any) {
-    return res.status(404).json({ error: err.message });
+    return res.status(err.statusCode || 404).json({
+      success: false,
+      error: err.message || "Usuário não encontrado",
+    });
   }
 };
 
 /**
- * Atualizar
+ * ✏️ Atualizar usuário (ADMIN)
  */
 export const updateUser = async (req: Request, res: Response) => {
   try {
-    const user = await service.update(
-      Number(req.params.id),
-      req.body
-    );
+    const id = Number(req.params.id);
+
+    if (isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        error: "ID inválido",
+      });
+    }
+
+    const user = await service.update(id, req.body);
 
     return res.json({
       success: true,
       data: user,
     });
   } catch (err: any) {
-    return res.status(400).json({ error: err.message });
+    return res.status(err.statusCode || 400).json({
+      success: false,
+      error: err.message || "Erro ao atualizar usuário",
+    });
   }
 };
 
 /**
- * Deletar
+ * 🔁 Alterar role
+ */
+export const updateUserRole = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+
+    if (isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        error: "ID inválido",
+      });
+    }
+
+    const { role } = req.body;
+
+    const user = await service.updateRole(id, role);
+
+    return res.json({
+      success: true,
+      data: user,
+    });
+  } catch (err: any) {
+    return res.status(err.statusCode || 400).json({
+      success: false,
+      error: err.message || "Erro ao atualizar role",
+    });
+  }
+};
+
+/**
+ * 🗑 Deletar usuário
  */
 export const deleteUser = async (req: Request, res: Response) => {
   try {
-    const result = await service.remove(Number(req.params.id));
+    const id = Number(req.params.id);
+
+    if (isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        error: "ID inválido",
+      });
+    }
+
+    const result = await service.remove(id);
 
     return res.json({
       success: true,
       data: result,
     });
   } catch (err: any) {
-    return res.status(400).json({ error: err.message });
+    return res.status(err.statusCode || 400).json({
+      success: false,
+      error: err.message || "Erro ao deletar usuário",
+    });
   }
 };
 
 /**
- * Stats
+ * 📊 Stats
  */
 export const stats = async (req: Request, res: Response) => {
   try {
@@ -117,6 +189,37 @@ export const stats = async (req: Request, res: Response) => {
       data,
     });
   } catch (err: any) {
-    return res.status(400).json({ error: err.message });
+    return res.status(500).json({
+      success: false,
+      error: err.message || "Erro ao buscar estatísticas",
+    });
+  }
+};
+
+/**
+ * 🚀 UPGRADE PARA PRO
+ */
+export const upgradePlan = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: "Usuário não autenticado",
+      });
+    }
+
+    const user = await service.upgradePlan(userId);
+
+    return res.json({
+      success: true,
+      data: user,
+    });
+  } catch (err: any) {
+    return res.status(err.statusCode || 400).json({
+      success: false,
+      error: err.message || "Erro ao atualizar plano",
+    });
   }
 };

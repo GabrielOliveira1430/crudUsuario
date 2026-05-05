@@ -1,3 +1,5 @@
+// src/components/UserCharts.tsx
+
 import {
   XAxis,
   YAxis,
@@ -27,23 +29,40 @@ export default function UserCharts({ growth, roles }: Props) {
       ? growth
       : [{ name: "Sem dados", users: 0 }];
 
-  const safeRoles = roles || { ADMIN: 0, USER: 0 };
+  const safeRoles = roles || {
+    ADMIN: 0,
+    USER: 0,
+  };
 
   const totalUsers =
     (safeRoles.ADMIN || 0) + (safeRoles.USER || 0);
 
   const pieData = [
-    { name: "Admins", value: safeRoles.ADMIN },
-    { name: "Users", value: safeRoles.USER },
+    {
+      name: "Admins",
+      value: safeRoles.ADMIN,
+    },
+    {
+      name: "Users",
+      value: safeRoles.USER,
+    },
   ];
 
-  const COLORS = [theme.colors.danger, theme.colors.primary];
+  const COLORS = [
+    theme.colors.danger,
+    theme.colors.primary,
+  ];
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      style={{ display: "flex", gap: 20, marginTop: 20 }}
+      style={{
+        display: "flex",
+        gap: 20,
+        marginTop: 20,
+        flexWrap: "wrap",
+      }}
     >
       {/* 📈 AREA */}
       <div style={card(theme)}>
@@ -52,15 +71,36 @@ export default function UserCharts({ growth, roles }: Props) {
         <ResponsiveContainer width="100%" height={260}>
           <AreaChart data={safeGrowth}>
             <defs>
-              <linearGradient id="gradientUsers" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={theme.colors.primary} stopOpacity={0.4} />
-                <stop offset="100%" stopColor={theme.colors.primary} stopOpacity={0} />
+              <linearGradient
+                id="gradientUsers"
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="1"
+              >
+                <stop
+                  offset="0%"
+                  stopColor={theme.colors.primary}
+                  stopOpacity={0.4}
+                />
+                <stop
+                  offset="100%"
+                  stopColor={theme.colors.primary}
+                  stopOpacity={0}
+                />
               </linearGradient>
             </defs>
 
-            <CartesianGrid stroke={theme.colors.border} opacity={0.3} />
+            <CartesianGrid
+              stroke={theme.colors.border}
+              opacity={0.3}
+            />
 
-            <XAxis dataKey="name" stroke={theme.colors.subtext} />
+            <XAxis
+              dataKey="name"
+              stroke={theme.colors.subtext}
+            />
+
             <YAxis stroke={theme.colors.subtext} />
 
             <Tooltip content={<CustomTooltip />} />
@@ -93,7 +133,10 @@ export default function UserCharts({ growth, roles }: Props) {
                 stroke="none"
               >
                 {pieData.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i]} />
+                  <Cell
+                    key={i}
+                    fill={COLORS[i]}
+                  />
                 ))}
               </Pie>
 
@@ -102,8 +145,13 @@ export default function UserCharts({ growth, roles }: Props) {
           </ResponsiveContainer>
 
           <div style={centerLabel(theme)}>
-            <strong style={{ fontSize: 22 }}>{totalUsers}</strong>
-            <span style={{ fontSize: 12 }}>usuários</span>
+            <strong style={{ fontSize: 22 }}>
+              {totalUsers}
+            </strong>
+
+            <span style={{ fontSize: 12 }}>
+              usuários
+            </span>
           </div>
         </div>
       </div>
@@ -136,6 +184,7 @@ function CustomTooltip({ active, payload }: any) {
 
 const card = (theme: any): React.CSSProperties => ({
   flex: 1,
+  minWidth: 320,
   background: theme.colors.card,
   padding: 20,
   borderRadius: 16,

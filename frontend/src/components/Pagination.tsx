@@ -1,3 +1,5 @@
+// src/components/Pagination.tsx
+
 import { useTheme } from "../hooks/useTheme";
 
 type Props = {
@@ -6,7 +8,11 @@ type Props = {
   onChange: (page: number) => void;
 };
 
-export default function Pagination({ page, totalPages, onChange }: Props) {
+export default function Pagination({
+  page,
+  totalPages,
+  onChange,
+}: Props) {
   const { theme } = useTheme();
 
   if (totalPages <= 1) return null;
@@ -21,7 +27,10 @@ export default function Pagination({ page, totalPages, onChange }: Props) {
         ←
       </button>
 
-      {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+      {Array.from(
+        { length: totalPages },
+        (_, i) => i + 1
+      ).map((p) => (
         <button
           key={p}
           onClick={() => onChange(p)}
@@ -49,20 +58,29 @@ const container: React.CSSProperties = {
   flexWrap: "wrap",
 };
 
-const btn = (theme: any, disabled: boolean): React.CSSProperties => ({
+const btn = (
+  theme: any,
+  disabled: boolean
+): React.CSSProperties => ({
   padding: "6px 10px",
   borderRadius: 6,
   border: `1px solid ${theme.colors.border}`,
   background: theme.colors.card,
+  color: theme.colors.text,
   cursor: disabled ? "not-allowed" : "pointer",
   opacity: disabled ? 0.5 : 1,
 });
 
-const pageBtn = (theme: any, active: boolean): React.CSSProperties => ({
+const pageBtn = (
+  theme: any,
+  active: boolean
+): React.CSSProperties => ({
   padding: "6px 10px",
   borderRadius: 6,
   border: `1px solid ${theme.colors.border}`,
-  background: active ? theme.colors.primary : theme.colors.card,
+  background: active
+    ? theme.colors.primary
+    : theme.colors.card,
   color: active ? "#fff" : theme.colors.text,
   cursor: "pointer",
 });

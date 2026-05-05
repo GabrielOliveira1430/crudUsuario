@@ -7,63 +7,54 @@ export class MailService {
     const apiKey = process.env.RESEND_API_KEY;
 
     if (!apiKey) {
-      throw new Error('❌ RESEND_API_KEY não configurada no ambiente');
+      throw new Error('❌ RESEND_API_KEY não configurada');
     }
 
     this.resend = new Resend(apiKey);
 
-    console.log('📧 Resend configurado com sucesso');
+    console.log('📧 Resend inicializado');
   }
 
-  // 🔐 ENVIO DE CÓDIGO 2FA
+  // 🔐 2FA EMAIL
   async send2FACode(email: string, code: string) {
     try {
-      const response = await this.resend.emails.send({
-        from: 'CoreAuth <no-reply@coreauth.dev>', // ✅ SEU DOMÍNIO
+      await this.resend.emails.send({
+        from: 'CoreAuth <no-reply@coreauth.dev>',
         to: email,
         subject: 'Seu código de verificação',
         html: `
-          <div style="font-family: Arial, sans-serif;">
+          <div style="font-family: Arial; padding: 20px;">
             <h2>🔐 Código de verificação</h2>
-            <p>Seu código é:</p>
-            <h1 style="letter-spacing: 4px;">${code}</h1>
+            <p>Use o código abaixo:</p>
+            <h1 style="letter-spacing: 5px;">${code}</h1>
             <p>Expira em 5 minutos</p>
           </div>
         `,
       });
-
-      console.log('✅ Email 2FA enviado:', response);
-    } catch (error) {
-      console.error('❌ Erro ao enviar email 2FA:', error);
-      throw new Error('Falha ao enviar email de verificação');
+    } catch (err) {
+      console.error('❌ Erro 2FA email:', err);
+      throw new Error('Erro ao enviar código 2FA');
     }
   }
 
-  // 📩 EMAIL GENÉRICO
+  // 📩 GENÉRICO
   async sendGenericEmail(to: string, subject: string, html: string) {
     try {
-      const response = await this.resend.emails.send({
-        from: 'CoreAuth <no-reply@coreauth.dev>', // ✅ DOMÍNIO
+      await this.resend.emails.send({
+        from: 'CoreAuth <no-reply@coreauth.dev>',
         to,
         subject,
         html,
       });
-
-      console.log('✅ Email enviado:', response);
-    } catch (error) {
-      console.error('❌ Erro ao enviar email:', error);
-      throw new Error('Falha ao enviar email');
+    } catch (err) {
+      console.error('❌ Erro email:', err);
+      throw new Error('Erro ao enviar email');
     }
   }
 
-  // 🧪 VERIFICAÇÃO
-  async verifyConnection(): Promise<boolean> {
-    try {
-      console.log('🟢 Resend pronto para uso');
-      return true;
-    } catch (error) {
-      console.error('❌ Erro no Resend:', error);
-      return false;
-    }
+  // 🧪 TESTE
+  async verifyConnection() {
+    console.log('🟢 Resend ativo');
+    return true;
   }
 }

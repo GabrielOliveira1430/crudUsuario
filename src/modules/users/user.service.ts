@@ -1,9 +1,9 @@
-import prisma from '../../database/prisma';
-import bcrypt from 'bcrypt';
-import { Role } from '@prisma/client';
+import prisma from "../../database/prisma";
+import bcrypt from "bcrypt";
+import { Role } from "@prisma/client";
 
-import { CreateUserDTO } from './user.types';
-import { AppError } from '../../shared/errors/AppError';
+import { CreateUserDTO } from "./user.types";
+import { AppError } from "../../shared/errors/AppError";
 
 const SALT_ROUNDS = 10;
 
@@ -23,6 +23,8 @@ type UpdateUserDTO = {
   role?: Role;
 };
 
+type UpdateRoleDTO = Role;
+
 /**
  * 🔐 Criar usuário
  */
@@ -33,24 +35,22 @@ export const create = async (data: CreateUserDTO) => {
   });
 
   if (exists) {
-    throw new AppError('Email já existe', 400);
+    throw new AppError("Email já existe", 400);
   }
 
-  let role: Role = Role.USER;
-
   if (data.role === Role.ADMIN) {
-    throw new AppError('Não é permitido criar ADMIN diretamente', 403);
+    throw new AppError("Não é permitido criar ADMIN diretamente", 403);
   }
 
   const hashedPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
 
-  const user = await prisma.user.create({
+  return prisma.user.create({
     data: {
       name: data.name,
       email: data.email,
       password: hashedPassword,
-      role,
-      plan: 'FREE',
+      role: Role.USER,
+      plan: "FREE",
     },
     select: {
       id: true,
@@ -61,8 +61,6 @@ export const create = async (data: CreateUserDTO) => {
       createdAt: true,
     },
   });
-
-  return user;
 };
 
 /**
@@ -81,15 +79,13 @@ export const getProfile = async (userId: number) => {
     },
   });
 
-  if (!user) {
-    throw new AppError('Usuário não encontrado', 404);
-  }
+  if (!user) throw new AppError("Usuário não encontrado", 404);
 
   return user;
 };
 
 /**
- * 📋 Listagem
+ * 📋 LISTAGEM
  */
 export const getAll = async (
   page: number,
@@ -103,44 +99,10 @@ export const getAll = async (
   if (filters?.search) {
     where.AND.push({
       OR: [
-        { name: { contains: filters.search, mode: 'insensitive' } },
-        { email: { contains: filters.search, mode: 'insensitive' } },
+        { name: { contains: filters.search, mode: "insensitive" } },
+        { email: { contains: filters.search, mode: "insensitive" } },
       ],
     });
-  }
-
-  if (filters?.name) {
-    where.AND.push({
-      name: { contains: filters.name, mode: 'insensitive' },
-    });
-  }
-
-  if (filters?.email) {
-    where.AND.push({
-      email: { contains: filters.email, mode: 'insensitive' },
-    });
-  }
-
-  if (filters?.startDate || filters?.endDate) {
-    where.AND.push({
-      createdAt: {
-        gte: filters.startDate ? new Date(filters.startDate) : undefined,
-        lte: filters.endDate ? new Date(filters.endDate) : undefined,
-      },
-    });
-  }
-
-  const allowedSortFields = ['name', 'email', 'createdAt'];
-  let orderBy: any = { createdAt: 'desc' };
-
-  if (filters?.sort) {
-    const [field, order] = filters.sort.split(':');
-
-    if (allowedSortFields.includes(field)) {
-      orderBy = {
-        [field]: order === 'asc' ? 'asc' : 'desc',
-      };
-    }
   }
 
   const finalWhere = where.AND.length ? where : undefined;
@@ -148,9 +110,9 @@ export const getAll = async (
   const [users, total] = await Promise.all([
     prisma.user.findMany({
       where: finalWhere,
-      orderBy,
       skip,
       take: limit,
+      orderBy: { createdAt: "desc" },
       select: {
         id: true,
         name: true,
@@ -160,9 +122,7 @@ export const getAll = async (
         createdAt: true,
       },
     }),
-    prisma.user.count({
-      where: finalWhere,
-    }),
+    prisma.user.count({ where: finalWhere }),
   ]);
 
   return {
@@ -175,7 +135,7 @@ export const getAll = async (
 };
 
 /**
- * 🔍 Buscar por ID
+ * 🔍 POR ID
  */
 export const getById = async (id: number) => {
   const user = await prisma.user.findUnique({
@@ -190,40 +150,30 @@ export const getById = async (id: number) => {
     },
   });
 
-  if (!user) {
-    throw new AppError('Usuário não encontrado', 404);
-  }
+  if (!user) throw new AppError("Usuário não encontrado", 404);
 
   return user;
 };
 
 /**
- * ✏️ Atualizar
+ * ✏️ UPDATE
  */
 export const update = async (id: number, data: UpdateUserDTO) => {
-  const exists = await prisma.user.findUnique({
-    where: { id },
-    select: { id: true },
-  });
+  const user = await prisma.user.findUnique({ where: { id } });
 
-  if (!exists) {
-    throw new AppError('Usuário não encontrado', 404);
+  if (!user) throw new AppError("Usuário não encontrado", 404);
+
+  const updateData: any = {};
+
+  if (data.name) updateData.name = data.name;
+  if (data.email) updateData.email = data.email;
+  if (data.role) updateData.role = data.role;
+
+  if (data.password) {
+    updateData.password = await bcrypt.hash(data.password, SALT_ROUNDS);
   }
 
-  const updateData: any = { ...data };
-
-  if (updateData.role) {
-    throw new AppError('Alteração de role não permitida', 403);
-  }
-
-  if (updateData.password) {
-    updateData.password = await bcrypt.hash(
-      updateData.password,
-      SALT_ROUNDS
-    );
-  }
-
-  const updated = await prisma.user.update({
+  return prisma.user.update({
     where: { id },
     data: updateData,
     select: {
@@ -235,28 +185,40 @@ export const update = async (id: number, data: UpdateUserDTO) => {
       updatedAt: true,
     },
   });
-
-  return updated;
 };
 
 /**
- * 🗑 Deletar
+ * 🔁 ROLE
+ */
+export const updateRole = async (id: number, role: UpdateRoleDTO) => {
+  const user = await prisma.user.findUnique({ where: { id } });
+
+  if (!user) throw new AppError("Usuário não encontrado", 404);
+
+  return prisma.user.update({
+    where: { id },
+    data: { role },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      updatedAt: true,
+    },
+  });
+};
+
+/**
+ * 🗑 DELETE
  */
 export const remove = async (id: number) => {
-  const exists = await prisma.user.findUnique({
-    where: { id },
-    select: { id: true },
-  });
+  const user = await prisma.user.findUnique({ where: { id } });
 
-  if (!exists) {
-    throw new AppError('Usuário não encontrado', 404);
-  }
+  if (!user) throw new AppError("Usuário não encontrado", 404);
 
-  await prisma.user.delete({
-    where: { id },
-  });
+  await prisma.user.delete({ where: { id } });
 
-  return { message: 'Usuário deletado com sucesso' };
+  return { message: "Usuário deletado com sucesso" };
 };
 
 /**
@@ -272,13 +234,13 @@ export const getUserStats = async () => {
 
   const growthMap: Record<string, number> = {};
 
-  users.forEach((user) => {
-    const month = new Date(user.createdAt).toLocaleString('pt-BR', {
-      month: 'short',
+  for (const user of users) {
+    const month = new Date(user.createdAt).toLocaleString("pt-BR", {
+      month: "short",
     });
 
     growthMap[month] = (growthMap[month] || 0) + 1;
-  });
+  }
 
   const growth = Object.entries(growthMap).map(([name, users]) => ({
     name,
@@ -292,4 +254,30 @@ export const getUserStats = async () => {
       USER: users.filter((u) => u.role === Role.USER).length,
     },
   };
+};
+
+/**
+ * 🚀 UPGRADE PARA PRO (🔥 FALTAVA ISSO AQUI)
+ */
+export const upgradePlan = async (userId: number) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new AppError("Usuário não encontrado", 404);
+  }
+
+  return prisma.user.update({
+    where: { id: userId },
+    data: { plan: "PRO" },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      plan: true,
+      updatedAt: true,
+    },
+  });
 };

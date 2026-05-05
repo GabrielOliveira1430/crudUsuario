@@ -47,7 +47,11 @@ export const useUsers = (page: number, search: string) => {
         console.warn("Formato inesperado:", res);
       }
 
-      return { users, total, lastPage };
+      return {
+        users,
+        total,
+        lastPage,
+      };
     },
 
     placeholderData: (prev) => prev,

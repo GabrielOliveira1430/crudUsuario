@@ -24,7 +24,7 @@ import { authLimiter } from '../../shared/middlewares/rateLimit.middleware';
 const router = Router();
 
 /**
- * 🔐 AUTH (CENTRALIZADO)
+ * 🔐 AUTH ROUTES
  */
 
 // 🔐 LOGIN
@@ -36,7 +36,7 @@ router.post(
   login
 );
 
-// 🔐 2FA
+// 🔐 2FA VERIFY
 router.post(
   '/verify-2fa',
   ipBlockMiddleware,

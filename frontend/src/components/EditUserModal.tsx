@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useTheme } from "../hooks/useTheme";
-import { updateUser } from "../services/userService";
+import {
+  updateUser,
+  updateUserRole,
+} from "../services/userService";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 
@@ -10,20 +13,40 @@ type Props = {
   onSuccess: () => void;
 };
 
-export default function EditUserModal({ user, onClose, onSuccess }: Props) {
+export default function EditUserModal({
+  user,
+  onClose,
+  onSuccess,
+}: Props) {
   const { theme } = useTheme();
 
   const [name, setName] = useState(user?.name || "");
+  const [email, setEmail] = useState(user?.email || "");
+  const [role, setRole] = useState(user?.role || "USER");
 
   const handleSave = async () => {
-    await toast.promise(updateUser(user.id, { name }), {
-      loading: "Salvando...",
-      success: "Usuário atualizado!",
-      error: "Erro ao atualizar",
-    });
+    try {
+      // 🔹 1. Atualiza nome e email (SEM role)
+      await updateUser(user.id, {
+        name,
+        email,
+      });
 
-    onSuccess();
-    onClose();
+      // 🔹 2. Atualiza role separado (se mudou)
+      if (role !== user.role) {
+        await updateUserRole(user.id, { role });
+      }
+
+      toast.success("Usuário atualizado!");
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      console.error("Erro update user:", err);
+
+      toast.error(
+        err?.response?.data?.error || "Erro ao atualizar usuário"
+      );
+    }
   };
 
   return (
@@ -33,13 +56,32 @@ export default function EditUserModal({ user, onClose, onSuccess }: Props) {
         animate={{ opacity: 1, scale: 1 }}
         style={{ ...modal, background: theme.colors.card }}
       >
-        <h2 style={{ color: theme.colors.text }}>Editar Usuário</h2>
+        <h2 style={{ color: theme.colors.text }}>
+          Editar Usuário
+        </h2>
 
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
+          placeholder="Nome"
           style={input(theme)}
         />
+
+        <input
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Email"
+          style={input(theme)}
+        />
+
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          style={input(theme)}
+        >
+          <option value="USER">USER</option>
+          <option value="ADMIN">ADMIN</option>
+        </select>
 
         <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
           <button onClick={onClose} style={cancelBtn}>
@@ -54,6 +96,8 @@ export default function EditUserModal({ user, onClose, onSuccess }: Props) {
     </div>
   );
 }
+
+/* ================= ESTILOS ================= */
 
 const overlay: React.CSSProperties = {
   position: "fixed",

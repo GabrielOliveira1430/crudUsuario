@@ -22,7 +22,7 @@ import {
 
 import { blacklistToken } from './tokenBlacklist.service';
 
-// 🔧 função padrão pra pegar IP
+// 🔧 IP helper
 function getClientIp(req: Request): string {
   let ip =
     (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
@@ -55,8 +55,6 @@ export async function login(req: Request, res: Response) {
 
     const userAgent = req.headers['user-agent'] || 'unknown';
 
-    console.log('🔐 Tentativa de login:', { email, ip });
-
     const result = await loginService(email, password, ip, userAgent);
 
     await resetAttempts(ip);
@@ -67,14 +65,12 @@ export async function login(req: Request, res: Response) {
       data: {
         message: result.message,
         security: {
-          suspiciousLogin: result.suspicious,
+          suspiciousLogin: result.suspicious || false,
         },
       },
     });
   } catch (error: any) {
     await registerFailedAttempt(ip);
-
-    console.error('❌ Erro no login:', error.message);
 
     return res.status(400).json({
       success: false,
@@ -107,8 +103,6 @@ export async function verify2FA(req: Request, res: Response) {
       data: result,
     });
   } catch (error: any) {
-    console.error('❌ Erro no 2FA:', error.message);
-
     return res.status(400).json({
       success: false,
       message: error.message || 'Erro na verificação',
@@ -132,10 +126,21 @@ export async function refresh(req: Request, res: Response) {
       });
     }
 
-    const payload = jwt.verify(
-      refreshToken,
-      process.env.JWT_REFRESH_SECRET!
-    ) as jwt.JwtPayload;
+    let payload: any;
+
+    try {
+      payload = jwt.verify(
+        refreshToken,
+        process.env.JWT_REFRESH_SECRET as string
+      );
+    } catch {
+      return res.status(403).json({
+        success: false,
+        message: 'Refresh token inválido',
+        error: 'Refresh token inválido',
+        data: null,
+      });
+    }
 
     const storedToken = await prisma.refreshToken.findUnique({
       where: { token: refreshToken },
@@ -144,7 +149,7 @@ export async function refresh(req: Request, res: Response) {
     if (!storedToken) {
       return res.status(403).json({
         success: false,
-        message: 'Refresh token inválido',
+        message: 'Refresh token não encontrado',
         error: 'Refresh token inválido',
         data: null,
       });
@@ -173,10 +178,10 @@ export async function refresh(req: Request, res: Response) {
       data: result,
     });
   } catch {
-    return res.status(403).json({
+    return res.status(500).json({
       success: false,
-      message: 'Token inválido ou expirado',
-      error: 'Token inválido ou expirado',
+      message: 'Erro interno ao renovar token',
+      error: 'Erro interno',
       data: null,
     });
   }
@@ -188,20 +193,11 @@ export async function logout(req: Request, res: Response) {
     const authHeader = req.headers.authorization;
     const { refreshToken } = req.body;
 
-    if (!authHeader) {
+    if (!authHeader || !refreshToken) {
       return res.status(400).json({
         success: false,
-        message: 'Token não fornecido',
-        error: 'Token não fornecido',
-        data: null,
-      });
-    }
-
-    if (!refreshToken) {
-      return res.status(400).json({
-        success: false,
-        message: 'Refresh token obrigatório',
-        error: 'Refresh token obrigatório',
+        message: 'Token e refresh token são obrigatórios',
+        error: 'Dados inválidos',
         data: null,
       });
     }
@@ -253,8 +249,6 @@ export async function forgotPassword(req: Request, res: Response) {
       data: result,
     });
   } catch (error: any) {
-    console.error('❌ Erro forgot password:', error.message);
-
     return res.status(400).json({
       success: false,
       message: error.message || 'Erro ao solicitar recuperação',
@@ -286,8 +280,6 @@ export async function resetPassword(req: Request, res: Response) {
       data: result,
     });
   } catch (error: any) {
-    console.error('❌ Erro reset password:', error.message);
-
     return res.status(400).json({
       success: false,
       message: error.message || 'Erro ao redefinir senha',
