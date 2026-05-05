@@ -2,12 +2,8 @@ import { api } from "../api/client";
 
 // 🔐 USUÁRIO LOGADO
 export const getMe = async () => {
-  try {
-    const { data } = await api.get("/users/me");
-    return data ?? null;
-  } catch {
-    return null;
-  }
+  const { data } = await api.get("/users/me");
+  return data ?? null;
 };
 
 // 📊 LISTAGEM
@@ -46,19 +42,19 @@ export const getUserStats = async () => {
   );
 };
 
-// ➕ CREATE
+// 🆕 CREATE USER (AGORA CORRETO)
 export const createUser = async (body: any) => {
-  const { data } = await api.post("/users", body);
+  const { data } = await api.post("/users/register", body);
   return data;
 };
 
-// ✏️ UPDATE USER
+// ✏️ UPDATE
 export const updateUser = async (id: number, body: any) => {
   const { data } = await api.put(`/users/${id}`, body);
   return data;
 };
 
-// 🔁 UPDATE ROLE
+// 🔁 ROLE
 export const updateUserRole = async (
   id: number,
   body: { role: string }
@@ -73,9 +69,7 @@ export const deleteUser = async (id: number) => {
   return data;
 };
 
-/**
- * 🚀 UPGRADE PARA PRO (🔥 FALTAVA ISSO)
- */
+// 🚀 UPGRADE
 export const upgradePlan = async () => {
   const { data } = await api.patch("/users/upgrade");
   return data;

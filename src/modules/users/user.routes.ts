@@ -1,5 +1,3 @@
-// src/modules/user/user.routes.ts
-
 import { Router } from "express";
 import { Role } from "@prisma/client";
 
@@ -18,7 +16,16 @@ import {
 const router = Router();
 
 /**
- * 🚀 UPGRADE PLAN (🔥 TEM QUE VIR ANTES DO /:id)
+ * 🚀 REGISTRO PÚBLICO (NOVO - FRONTEND USA ISSO)
+ */
+router.post(
+  "/register",
+  validate(createUserSchema),
+  controller.createUser
+);
+
+/**
+ * 🚀 UPGRADE PLAN
  */
 router.patch(
   "/upgrade",
@@ -27,24 +34,12 @@ router.patch(
 );
 
 /**
- * Criar usuário
- */
-router.post(
-  "/",
-  authMiddleware,
-  roleMiddleware(Role.ADMIN),
-  permissionMiddleware("user:create"),
-  validate(createUserSchema),
-  controller.createUser
-);
-
-/**
- * Perfil
+ * 👤 PERFIL
  */
 router.get("/me", authMiddleware, controller.me);
 
 /**
- * Stats
+ * 📊 STATS (ADMIN)
  */
 router.get(
   "/stats",
@@ -55,7 +50,7 @@ router.get(
 );
 
 /**
- * Users
+ * 📋 LISTAR USERS (ADMIN)
  */
 router.get(
   "/",
@@ -65,6 +60,9 @@ router.get(
   controller.getUsers
 );
 
+/**
+ * 🔍 POR ID (ADMIN)
+ */
 router.get(
   "/:id",
   authMiddleware,
@@ -73,6 +71,9 @@ router.get(
   controller.getUser
 );
 
+/**
+ * ✏️ UPDATE (ADMIN)
+ */
 router.put(
   "/:id",
   authMiddleware,
@@ -82,6 +83,9 @@ router.put(
   controller.updateUser
 );
 
+/**
+ * 🔁 ROLE (ADMIN)
+ */
 router.patch(
   "/:id/role",
   authMiddleware,
@@ -90,6 +94,9 @@ router.patch(
   controller.updateUserRole
 );
 
+/**
+ * 🗑 DELETE (ADMIN)
+ */
 router.delete(
   "/:id",
   authMiddleware,
