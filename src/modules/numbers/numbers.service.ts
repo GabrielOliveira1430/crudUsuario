@@ -32,7 +32,7 @@ function getUserLimits(plan?: string) {
   }
 
   return {
-    maxAmount: 100,
+    maxAmount: 5, // 🔥 AGORA BATE COM FRONTEND
     maxHistory: 10,
     plan: "FREE",
   };
@@ -48,6 +48,37 @@ function normalizeNumbers(numbers: unknown[]): string[] {
   });
 }
 
+// 🔥 BLOQUEIO CENTRAL (ANTI BYPASS)
+function validatePlanAccess(
+  user: UserPayload,
+  type: NumberType,
+  amount: number,
+  limits: ReturnType<typeof getUserLimits>
+) {
+  if (!user?.id) {
+    throw new Error("Usuário inválido");
+  }
+
+  if (amount <= 0) {
+    throw new Error("Quantidade inválida");
+  }
+
+  // 🔥 LIMITE HARD (segurança real)
+  if (amount > limits.maxAmount) {
+    throw new Error(
+      `Plano ${limits.plan}: máximo de ${limits.maxAmount} números`
+    );
+  }
+
+  // 🔥 BLOQUEIO DE FEATURES PRO
+  if (
+    limits.plan === "FREE" &&
+    !["milhar", "centena", "dezena"].includes(type)
+  ) {
+    throw new Error("Função disponível apenas no plano PRO");
+  }
+}
+
 export async function generateNumbersService(
   type: NumberType,
   amount: number,
@@ -55,23 +86,8 @@ export async function generateNumbersService(
 ) {
   const limits = getUserLimits(user.plan);
 
-  if (amount <= 0) {
-    throw new Error("Quantidade inválida");
-  }
-
-  if (amount > limits.maxAmount) {
-    throw new Error(
-      `Seu plano ${limits.plan} permite no máximo ${limits.maxAmount} números por geração`
-    );
-  }
-
-  // 🔐 BLOQUEIO PRO
-  if (
-    user.plan !== "PRO" &&
-    !["milhar", "centena", "dezena"].includes(type)
-  ) {
-    throw new Error("Disponível apenas no plano PRO");
-  }
+  // 🔥 VALIDAÇÃO CENTRAL
+  validatePlanAccess(user, type, amount, limits);
 
   const html = await getNumbersFromPage();
   const milhares = extractMilhar(html);
@@ -123,7 +139,7 @@ export async function generateNumbersService(
     }
   }
 
-  // 💾 SALVAR NO BANCO
+  // 💾 SALVAR
   await prisma.numberHistory.create({
     data: {
       userId: user.id,
@@ -131,7 +147,7 @@ export async function generateNumbersService(
     },
   });
 
-  // 🔥 CONTROLAR TAMANHO DO HISTÓRICO
+  // 🔥 CONTROLE DE HISTÓRICO
   const historyCount = await prisma.numberHistory.count({
     where: { userId: user.id },
   });
@@ -153,9 +169,12 @@ export async function generateNumbersService(
   }
 
   return {
-    numbers: result,
-    plan: limits.plan,
-    limits,
+    success: true,
+    data: {
+      numbers: result,
+      plan: limits.plan,
+      limits,
+    },
   };
 }
 
@@ -168,9 +187,15 @@ export async function getUserHistoryService(user: UserPayload) {
     take: limits.maxHistory,
   });
 
-  return history.map((item) => item.numbers);
+  return {
+    success: true,
+    data: history.map((item) => item.numbers),
+  };
 }
 
 export async function getRankingService() {
-  return [];
+  return {
+    success: true,
+    data: [],
+  };
 }
