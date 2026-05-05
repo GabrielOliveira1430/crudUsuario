@@ -8,15 +8,12 @@ import { roleMiddleware } from "../../shared/middlewares/role.middleware";
 import { permissionMiddleware } from "../../shared/middlewares/permission.middleware";
 import { validate } from "../../shared/middlewares/validate.middleware";
 
-import {
-  createUserSchema,
-  updateUserSchema,
-} from "./user.schema";
+import { createUserSchema, updateUserSchema } from "./user.schema";
 
 const router = Router();
 
 /**
- * 🆓 REGISTRO PÚBLICO (NOVO - FRONTEND USA ISSO)
+ * 🆓 REGISTRO PÚBLICO (FRONTEND)
  */
 router.post(
   "/register",
@@ -25,19 +22,10 @@ router.post(
 );
 
 /**
- * 🚀 UPGRADE PLAN
- */
-router.patch(
-  "/upgrade",
-  authMiddleware,
-  controller.upgradePlan
-);
-
-/**
- * 🔐 ADMIN - criar usuário
+ * 🔐 ADMIN CREATE (PROTEGIDO)
  */
 router.post(
-  "/",
+  "/admin",
   authMiddleware,
   roleMiddleware(Role.ADMIN),
   permissionMiddleware("user:create"),
@@ -46,7 +34,7 @@ router.post(
 );
 
 /**
- * 👤 PERFIL
+ * 👤 ME
  */
 router.get("/me", authMiddleware, controller.me);
 
@@ -103,6 +91,15 @@ router.delete(
   roleMiddleware(Role.ADMIN),
   permissionMiddleware("user:delete"),
   controller.deleteUser
+);
+
+/**
+ * 🚀 UPGRADE
+ */
+router.patch(
+  "/upgrade",
+  authMiddleware,
+  controller.upgradePlan
 );
 
 export default router;

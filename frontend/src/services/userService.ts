@@ -1,12 +1,12 @@
 import { api } from "../api/client";
 
-// 🔐 USUÁRIO LOGADO
+// 🔐 ME
 export const getMe = async () => {
   const { data } = await api.get("/users/me");
   return data ?? null;
 };
 
-// 📊 LISTAGEM
+// 📊 USERS
 export const getUsers = async ({
   page,
   limit,
@@ -42,7 +42,7 @@ export const getUserStats = async () => {
   );
 };
 
-// 🆕 CREATE USER (AGORA CORRETO)
+// 🆕 CRIAÇÃO PÚBLICA (CORRETO AGORA)
 export const createUser = async (body: any) => {
   const { data } = await api.post("/users/register", body);
   return data;
