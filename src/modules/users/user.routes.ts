@@ -16,7 +16,7 @@ import {
 const router = Router();
 
 /**
- * 🚀 REGISTRO PÚBLICO (NOVO - FRONTEND USA ISSO)
+ * 🆓 REGISTRO PÚBLICO (NOVO - FRONTEND USA ISSO)
  */
 router.post(
   "/register",
@@ -34,12 +34,24 @@ router.patch(
 );
 
 /**
+ * 🔐 ADMIN - criar usuário
+ */
+router.post(
+  "/",
+  authMiddleware,
+  roleMiddleware(Role.ADMIN),
+  permissionMiddleware("user:create"),
+  validate(createUserSchema),
+  controller.createUser
+);
+
+/**
  * 👤 PERFIL
  */
 router.get("/me", authMiddleware, controller.me);
 
 /**
- * 📊 STATS (ADMIN)
+ * 📊 STATS
  */
 router.get(
   "/stats",
@@ -50,7 +62,7 @@ router.get(
 );
 
 /**
- * 📋 LISTAR USERS (ADMIN)
+ * 📋 USERS
  */
 router.get(
   "/",
@@ -60,9 +72,6 @@ router.get(
   controller.getUsers
 );
 
-/**
- * 🔍 POR ID (ADMIN)
- */
 router.get(
   "/:id",
   authMiddleware,
@@ -71,9 +80,6 @@ router.get(
   controller.getUser
 );
 
-/**
- * ✏️ UPDATE (ADMIN)
- */
 router.put(
   "/:id",
   authMiddleware,
@@ -83,9 +89,6 @@ router.put(
   controller.updateUser
 );
 
-/**
- * 🔁 ROLE (ADMIN)
- */
 router.patch(
   "/:id/role",
   authMiddleware,
@@ -94,9 +97,6 @@ router.patch(
   controller.updateUserRole
 );
 
-/**
- * 🗑 DELETE (ADMIN)
- */
 router.delete(
   "/:id",
   authMiddleware,
