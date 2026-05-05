@@ -20,6 +20,7 @@ type UserPayload = {
   plan?: string;
 };
 
+// 🔥 CONFIG CENTRAL DO SAAS
 function getUserLimits(plan?: string) {
   const normalizedPlan = (plan || "FREE").toUpperCase();
 
@@ -27,18 +28,27 @@ function getUserLimits(plan?: string) {
     return {
       maxAmount: 1000,
       maxHistory: 50,
+      maxPerDay: 100,
       plan: "PRO",
     };
   }
 
   return {
-    maxAmount: 5, // 🔥 AGORA BATE COM FRONTEND
+    maxAmount: 5,       // 🔥 limite por geração
     maxHistory: 10,
+    maxPerDay: 5,       // 🔥 limite por dia
     plan: "FREE",
   };
 }
 
-// 🔥 NORMALIZAÇÃO SEGURA
+// 🔥 pega início do dia (00:00)
+function getStartOfDay() {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+// 🔥 NORMALIZAÇÃO
 function normalizeNumbers(numbers: unknown[]): string[] {
   return numbers.map((n) => {
     if (typeof n === "string") return n;
@@ -48,37 +58,6 @@ function normalizeNumbers(numbers: unknown[]): string[] {
   });
 }
 
-// 🔥 BLOQUEIO CENTRAL (ANTI BYPASS)
-function validatePlanAccess(
-  user: UserPayload,
-  type: NumberType,
-  amount: number,
-  limits: ReturnType<typeof getUserLimits>
-) {
-  if (!user?.id) {
-    throw new Error("Usuário inválido");
-  }
-
-  if (amount <= 0) {
-    throw new Error("Quantidade inválida");
-  }
-
-  // 🔥 LIMITE HARD (segurança real)
-  if (amount > limits.maxAmount) {
-    throw new Error(
-      `Plano ${limits.plan}: máximo de ${limits.maxAmount} números`
-    );
-  }
-
-  // 🔥 BLOQUEIO DE FEATURES PRO
-  if (
-    limits.plan === "FREE" &&
-    !["milhar", "centena", "dezena"].includes(type)
-  ) {
-    throw new Error("Função disponível apenas no plano PRO");
-  }
-}
-
 export async function generateNumbersService(
   type: NumberType,
   amount: number,
@@ -86,9 +65,44 @@ export async function generateNumbersService(
 ) {
   const limits = getUserLimits(user.plan);
 
-  // 🔥 VALIDAÇÃO CENTRAL
-  validatePlanAccess(user, type, amount, limits);
+  // ❌ VALIDAÇÃO
+  if (amount <= 0) {
+    throw new Error("Quantidade inválida");
+  }
 
+  if (amount > limits.maxAmount) {
+    throw new Error(
+      `Plano ${limits.plan}: máximo ${limits.maxAmount} números por geração`
+    );
+  }
+
+  // 🔒 BLOQUEIO POR TIPO (FREE)
+  if (
+    user.plan !== "PRO" &&
+    !["milhar", "centena", "dezena"].includes(type)
+  ) {
+    throw new Error("Disponível apenas no plano PRO");
+  }
+
+  // 🔥 LIMITE DIÁRIO (ANTI-SPAM)
+  const today = getStartOfDay();
+
+  const todayUsage = await prisma.usage.findUnique({
+    where: {
+      userId_date: {
+        userId: user.id,
+        date: today,
+      },
+    },
+  });
+
+  if (todayUsage && todayUsage.count >= limits.maxPerDay) {
+    throw new Error(
+      `Limite diário atingido (${limits.maxPerDay} gerações). Tente amanhã ou faça upgrade.`
+    );
+  }
+
+  // 🔢 GERAR NÚMEROS
   const html = await getNumbersFromPage();
   const milhares = extractMilhar(html);
 
@@ -139,7 +153,7 @@ export async function generateNumbersService(
     }
   }
 
-  // 💾 SALVAR
+  // 💾 SALVAR HISTÓRICO
   await prisma.numberHistory.create({
     data: {
       userId: user.id,
@@ -147,7 +161,27 @@ export async function generateNumbersService(
     },
   });
 
-  // 🔥 CONTROLE DE HISTÓRICO
+  // 🔥 CONTROLE DE USO DIÁRIO
+  await prisma.usage.upsert({
+    where: {
+      userId_date: {
+        userId: user.id,
+        date: today,
+      },
+    },
+    update: {
+      count: {
+        increment: 1,
+      },
+    },
+    create: {
+      userId: user.id,
+      date: today,
+      count: 1,
+    },
+  });
+
+  // 🔥 LIMITAR HISTÓRICO
   const historyCount = await prisma.numberHistory.count({
     where: { userId: user.id },
   });
@@ -169,11 +203,12 @@ export async function generateNumbersService(
   }
 
   return {
-    success: true,
-    data: {
-      numbers: result,
-      plan: limits.plan,
-      limits,
+    numbers: result,
+    plan: limits.plan,
+    limits,
+    usage: {
+      today: (todayUsage?.count || 0) + 1,
+      max: limits.maxPerDay,
     },
   };
 }
@@ -187,15 +222,9 @@ export async function getUserHistoryService(user: UserPayload) {
     take: limits.maxHistory,
   });
 
-  return {
-    success: true,
-    data: history.map((item) => item.numbers),
-  };
+  return history.map((item) => item.numbers);
 }
 
 export async function getRankingService() {
-  return {
-    success: true,
-    data: [],
-  };
+  return [];
 }
