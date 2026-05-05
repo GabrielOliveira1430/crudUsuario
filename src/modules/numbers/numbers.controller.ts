@@ -5,7 +5,9 @@ import {
   getRankingService,
 } from "./numbers.service";
 import { NumberType } from "./numbers.types";
+import prisma from "../../database/prisma";
 
+// 🔢 GERAR
 export async function generateNumbersController(
   req: Request,
   res: Response
@@ -29,41 +31,28 @@ export async function generateNumbersController(
         "cercado_dezena",
       ].includes(type)
     ) {
-      return res.status(400).json({
-        error: "Tipo inválido",
-      });
+      return res.status(400).json({ error: "Tipo inválido" });
     }
 
     if (!amount || isNaN(amount) || amount <= 0) {
-      return res.status(400).json({
-        error: "amount deve ser válido",
-      });
+      return res.status(400).json({ error: "amount deve ser válido" });
     }
 
     const user = (req as any).user;
 
     if (!user?.id) {
-      return res.status(401).json({
-        error: "Usuário não autenticado",
-      });
+      return res.status(401).json({ error: "Usuário não autenticado" });
     }
 
-    const result = await generateNumbersService(
-      type,
-      amount,
-      user
-    );
+    const result = await generateNumbersService(type, amount, user);
 
     return res.json(result);
   } catch (error: any) {
-    console.error("ERRO:", error.message);
-
-    return res.status(400).json({
-      error: error.message,
-    });
+    return res.status(400).json({ error: error.message });
   }
 }
 
+// 📜 HISTÓRICO
 export async function getUserHistoryController(
   req: Request,
   res: Response
@@ -72,32 +61,53 @@ export async function getUserHistoryController(
     const user = (req as any).user;
 
     if (!user?.id) {
-      return res.status(401).json({
-        error: "Usuário não autenticado",
-      });
+      return res.status(401).json({ error: "Usuário não autenticado" });
     }
 
     const history = await getUserHistoryService(user);
 
     return res.json(history);
-  } catch (error: any) {
+  } catch {
+    return res.status(500).json({ error: "Erro interno" });
+  }
+}
+
+// 🗑 LIMPAR HISTÓRICO (🔥 NOVO)
+export async function clearUserHistoryController(
+  req: Request,
+  res: Response
+) {
+  try {
+    const user = (req as any).user;
+
+    if (!user?.id) {
+      return res.status(401).json({ error: "Usuário não autenticado" });
+    }
+
+    await prisma.numberHistory.deleteMany({
+      where: { userId: user.id },
+    });
+
+    return res.json({
+      success: true,
+      message: "Histórico apagado com sucesso",
+    });
+  } catch {
     return res.status(500).json({
-      error: "Erro interno",
+      error: "Erro ao limpar histórico",
     });
   }
 }
 
+// 🏆 RANKING
 export async function getRankingController(
   req: Request,
   res: Response
 ) {
   try {
     const ranking = await getRankingService();
-
     return res.json(ranking);
   } catch {
-    return res.status(500).json({
-      error: "Erro interno",
-    });
+    return res.status(500).json({ error: "Erro interno" });
   }
 }

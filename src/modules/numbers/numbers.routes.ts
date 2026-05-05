@@ -1,11 +1,11 @@
-// src/modules/numbers/numbers.routes.ts
-
 import { Router } from "express";
 import {
   generateNumbersController,
   getUserHistoryController,
   getRankingController,
+  clearUserHistoryController, // 🔥 NOVO
 } from "./numbers.controller";
+
 import { authMiddleware } from "../../shared/middlewares/auth.middleware";
 
 const router = Router();
@@ -20,6 +20,13 @@ router.get(
   "/history",
   authMiddleware,
   getUserHistoryController
+);
+
+// 🔥 NOVA ROTA
+router.delete(
+  "/history",
+  authMiddleware,
+  clearUserHistoryController
 );
 
 router.get(
