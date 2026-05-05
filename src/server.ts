@@ -9,35 +9,32 @@ const PORT = Number(process.env.PORT) || 3000;
 
 async function startServer() {
   try {
-    console.log('🔥 REDIS_URL:', process.env.REDIS_URL);
+    console.log('🔥 REDIS_URL:', process.env.REDIS_URL || 'não configurado');
 
-    // 🟡 Redis opcional (não pode quebrar a API)
     if (redis) {
       try {
         await redis.set('test', 'ok');
         const value = await redis.get('test');
         console.log('🟢 Redis conectado:', value);
-      } catch (redisError) {
+      } catch {
         console.log('🟡 Redis não conectado (continuando sem ele)');
       }
     }
 
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Servidor rodando na porta ${PORT}`);
-      console.log(`📘 Swagger: /docs`);
+      console.log(`📘 Health: /health`);
     });
 
   } catch (error) {
     console.error('🔴 Erro ao iniciar servidor:', error);
 
-    // 🔥 fallback seguro (nunca deixa o app cair)
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Servidor rodando (fallback) na porta ${PORT}`);
     });
   }
 }
 
-// 🚫 evita rodar em testes
 if (process.env.NODE_ENV !== 'test') {
   startServer();
 }
