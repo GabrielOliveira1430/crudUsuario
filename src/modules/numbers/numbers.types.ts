@@ -8,4 +8,5 @@ export type NumberType =
   | "duque_dezena"
   | "terno_dezena"
   | "inversao_milhar"
-  | "cercado_dezena";
+  | "cercado_dezena"
+  | "sonho"; // 🆕 NOVO JOGO

@@ -1,99 +1,267 @@
-import { Request, Response, NextFunction } from 'express';
+import type {
+  Request,
+  Response,
+  NextFunction,
+} from 'express';
+
 import prisma from '../../database/prisma';
 
-import { verifyAccessToken } from '../../modules/auth/token.service';
-import { isBlacklisted } from '../../modules/auth/tokenBlacklist.service';
+import {
+  verifyAccessToken,
+} from '../../modules/auth/token.service';
 
-import { JwtPayload } from 'jsonwebtoken';
+import {
+  isBlacklisted,
+} from '../../modules/auth/tokenBlacklist.service';
+
+import type {
+  JwtPayload,
+} from 'jsonwebtoken';
+
+
+// ========================================
+// 🔐 AUTH MIDDLEWARE
+// ========================================
 
 export const authMiddleware = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader) {
-    return res.status(401).json({
-      success: false,
-      error: 'Token não fornecido',
-    });
-  }
-
-  const parts = authHeader.split(' ');
-
-  if (parts.length !== 2) {
-    return res.status(401).json({
-      success: false,
-      error: 'Token mal formatado',
-    });
-  }
-
-  const [scheme, token] = parts;
-
-  if (!/^Bearer$/i.test(scheme)) {
-    return res.status(401).json({
-      success: false,
-      error: 'Token mal formatado',
-    });
-  }
 
   try {
-    // 🚫 blacklist
-    const blocked = await isBlacklisted(token);
+
+    // ========================================
+    // 🔍 AUTH HEADER
+    // ========================================
+
+    const authHeader =
+      req.headers.authorization;
+
+    if (!authHeader) {
+
+      return res.status(401).json({
+
+        success: false,
+
+        message:
+          'Token não fornecido',
+
+        error:
+          'Unauthorized',
+
+        data: null,
+      });
+    }
+
+
+    // ========================================
+    // 🔍 TOKEN FORMAT
+    // ========================================
+
+    const parts =
+      authHeader.split(' ');
+
+    if (parts.length !== 2) {
+
+      return res.status(401).json({
+
+        success: false,
+
+        message:
+          'Token mal formatado',
+
+        error:
+          'Unauthorized',
+
+        data: null,
+      });
+    }
+
+    const [
+      scheme,
+      token,
+    ] = parts;
+
+    if (
+      !/^Bearer$/i.test(scheme)
+    ) {
+
+      return res.status(401).json({
+
+        success: false,
+
+        message:
+          'Token mal formatado',
+
+        error:
+          'Unauthorized',
+
+        data: null,
+      });
+    }
+
+
+    // ========================================
+    // 🚫 BLACKLIST
+    // ========================================
+
+    const blocked =
+      await isBlacklisted(token);
 
     if (blocked) {
+
       return res.status(401).json({
+
         success: false,
-        error: 'Token inválido (logout)',
+
+        message:
+          'Token inválido (logout)',
+
+        error:
+          'Unauthorized',
+
+        data: null,
       });
     }
 
-    // 🔍 valida token
-    const decoded = verifyAccessToken(token) as JwtPayload;
 
-    const userId = decoded.sub ? Number(decoded.sub) : null;
+    // ========================================
+    // 🔍 VERIFY JWT
+    // ========================================
+
+    const decoded =
+      verifyAccessToken(
+        token
+      ) as JwtPayload;
+
+    const userId =
+      decoded.sub
+        ? Number(decoded.sub)
+        : null;
 
     if (!userId) {
+
       return res.status(401).json({
+
         success: false,
-        error: 'Token inválido',
+
+        message:
+          'Token inválido',
+
+        error:
+          'Unauthorized',
+
+        data: null,
       });
     }
 
-    // 🔎 SEMPRE busca no banco (fonte da verdade)
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
+
+    // ========================================
+    // 👤 DATABASE USER
+    // ========================================
+
+    const user =
+      await prisma.user.findUnique({
+        where: {
+          id: userId,
+        },
+
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          plan: true,
+          isActive: true,
+        },
+      });
 
     if (!user) {
+
       return res.status(404).json({
+
         success: false,
-        error: 'Usuário não encontrado',
+
+        message:
+          'Usuário não encontrado',
+
+        error:
+          'Not Found',
+
+        data: null,
       });
     }
+
+
+    // ========================================
+    // 🚫 USER BLOCKED
+    // ========================================
 
     if (!user.isActive) {
+
       return res.status(403).json({
+
         success: false,
-        error: 'Usuário bloqueado',
+
+        message:
+          'Usuário bloqueado',
+
+        error:
+          'Forbidden',
+
+        data: null,
       });
     }
 
-    // ✅ IMPORTANTE: role vem do banco (NUNCA do token)
+
+    // ========================================
+    // ✅ INJECT USER
+    // ========================================
+
     (req as any).user = {
-      id: user.id,
-      role: user.role,
-      plan: user.plan, // 🔥 ESSENCIAL PRO SAAS
+
+      id:
+        user.id,
+
+      name:
+        user.name,
+
+      email:
+        user.email,
+
+      role:
+        user.role,
+
+      plan:
+        user.plan,
     };
 
-    console.log('USER AUTH FINAL:', (req as any).user);
+
+    // ========================================
+    // 🚀 NEXT
+    // ========================================
 
     return next();
-  } catch {
+
+  } catch (error) {
+
+    console.error(
+      'AUTH ERROR:',
+      error
+    );
+
     return res.status(401).json({
+
       success: false,
-      error: 'Token inválido ou expirado',
+
+      message:
+        'Token inválido ou expirado',
+
+      error:
+        'Unauthorized',
+
+      data: null,
     });
   }
 };

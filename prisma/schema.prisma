@@ -52,6 +52,9 @@ model User {
   usages              Usage[]
   numberHistory       NumberHistory[]
 
+  // 🆕 SONHOS (analytics)
+  dreamWords DreamWord[]
+
   @@map("users")
 }
 
@@ -141,7 +144,7 @@ model Usage {
   @@map("usages")
 }
 
-// 🔢 HISTÓRICO DE NÚMEROS (🔥 AJUSTADO)
+// 🔢 HISTÓRICO DE NÚMEROS
 model NumberHistory {
   id Int @id @default(autoincrement())
 
@@ -154,4 +157,68 @@ model NumberHistory {
 
   @@index([userId])
   @@map("number_history")
+}
+
+// 🆕 ANALYTICS DE SONHOS
+model DreamWord {
+  id Int @id @default(autoincrement())
+
+  userId Int
+  word   String
+  count  Int @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, word])
+  @@index([userId])
+  @@map("dream_words")
+}
+
+// ==========================================
+// 🧠 AI LEARNING MEMORY
+// ==========================================
+
+model StrategyLearning {
+
+  id Int @id @default(autoincrement())
+
+  // nome da strategy
+  name String @unique
+
+  // peso adaptativo
+  weight Float @default(1)
+
+  // total de acertos
+  hits Int @default(0)
+
+  // total de execuções
+  runs Int @default(0)
+
+  // score evolutivo
+  score Float @default(0)
+
+  // taxa de sobrevivência
+  survivalRate Float @default(1)
+
+  // espécie da strategy
+  species String?
+
+  // status
+  active Boolean @default(true)
+
+  // metadata futura
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+
+  @@index([active])
+
+  @@map("strategy_learning")
 }

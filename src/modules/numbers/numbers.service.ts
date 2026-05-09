@@ -12,15 +12,17 @@ import { generateTernoDezena } from "./adapters/ternoDezena.adapter";
 import { generateInversaoMilhar } from "./adapters/inversaoMilhar.adapter";
 import { generateCercadoDezena } from "./adapters/cercadoDezena.adapter";
 
+import { generateSonho } from "./adapters/sonho.adapter";
+
 import prisma from "../../database/prisma";
 
 type UserPayload = {
   id: number;
   role?: string;
   plan?: string;
+  words?: string[];
 };
 
-// 🔥 CONFIG CENTRAL DO SAAS
 function getUserLimits(plan?: string) {
   const normalizedPlan = (plan || "FREE").toUpperCase();
 
@@ -34,22 +36,22 @@ function getUserLimits(plan?: string) {
   }
 
   return {
-    maxAmount: 5,       // 🔥 limite por geração
+    maxAmount: 5,
     maxHistory: 10,
-    maxPerDay: 5,       // 🔥 limite por dia
+    maxPerDay: 5,
     plan: "FREE",
   };
 }
 
-// 🔥 pega início do dia (00:00)
 function getStartOfDay() {
   const date = new Date();
   date.setHours(0, 0, 0, 0);
   return date;
 }
 
-// 🔥 NORMALIZAÇÃO
 function normalizeNumbers(numbers: unknown[]): string[] {
+  if (!Array.isArray(numbers)) return [];
+
   return numbers.map((n) => {
     if (typeof n === "string") return n;
     if (Array.isArray(n)) return n.join("-");
@@ -65,10 +67,7 @@ export async function generateNumbersService(
 ) {
   const limits = getUserLimits(user.plan);
 
-  // ❌ VALIDAÇÃO
-  if (amount <= 0) {
-    throw new Error("Quantidade inválida");
-  }
+  if (amount <= 0) throw new Error("Quantidade inválida");
 
   if (amount > limits.maxAmount) {
     throw new Error(
@@ -76,7 +75,6 @@ export async function generateNumbersService(
     );
   }
 
-  // 🔒 BLOQUEIO POR TIPO (FREE)
   if (
     user.plan !== "PRO" &&
     !["milhar", "centena", "dezena"].includes(type)
@@ -84,7 +82,6 @@ export async function generateNumbersService(
     throw new Error("Disponível apenas no plano PRO");
   }
 
-  // 🔥 LIMITE DIÁRIO (ANTI-SPAM)
   const today = getStartOfDay();
 
   const todayUsage = await prisma.usage.findUnique({
@@ -97,12 +94,9 @@ export async function generateNumbersService(
   });
 
   if (todayUsage && todayUsage.count >= limits.maxPerDay) {
-    throw new Error(
-      `Limite diário atingido (${limits.maxPerDay} gerações). Tente amanhã ou faça upgrade.`
-    );
+    throw new Error("Limite diário atingido");
   }
 
-  // 🔢 GERAR NÚMEROS
   const html = await getNumbersFromPage();
   const milhares = extractMilhar(html);
 
@@ -150,10 +144,18 @@ export async function generateNumbersService(
       case "cercado_dezena":
         result = generateCercadoDezena(dezenas);
         break;
+
+      case "sonho":
+        result = await generateSonho(user.words || [], user.id);
+        break;
+
+      default:
+        throw new Error("Tipo inválido");
     }
   }
 
-  // 💾 SALVAR HISTÓRICO
+  if (!Array.isArray(result)) result = [];
+
   await prisma.numberHistory.create({
     data: {
       userId: user.id,
@@ -161,7 +163,6 @@ export async function generateNumbersService(
     },
   });
 
-  // 🔥 CONTROLE DE USO DIÁRIO
   await prisma.usage.upsert({
     where: {
       userId_date: {
@@ -169,38 +170,13 @@ export async function generateNumbersService(
         date: today,
       },
     },
-    update: {
-      count: {
-        increment: 1,
-      },
-    },
+    update: { count: { increment: 1 } },
     create: {
       userId: user.id,
       date: today,
       count: 1,
     },
   });
-
-  // 🔥 LIMITAR HISTÓRICO
-  const historyCount = await prisma.numberHistory.count({
-    where: { userId: user.id },
-  });
-
-  if (historyCount > limits.maxHistory) {
-    const toDelete = await prisma.numberHistory.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: "asc" },
-      take: historyCount - limits.maxHistory,
-    });
-
-    await prisma.numberHistory.deleteMany({
-      where: {
-        id: {
-          in: toDelete.map((item) => item.id),
-        },
-      },
-    });
-  }
 
   return {
     numbers: result,
@@ -209,6 +185,44 @@ export async function generateNumbersService(
     usage: {
       today: (todayUsage?.count || 0) + 1,
       max: limits.maxPerDay,
+    },
+  };
+}
+
+// 🔥 HOT / COLD
+export async function getHotColdNumbers(userId: number) {
+  const allHistory = await prisma.numberHistory.findMany({
+    select: { numbers: true, userId: true },
+  });
+
+  const globalFreq: Record<string, number> = {};
+  const userFreq: Record<string, number> = {};
+
+  for (const item of allHistory) {
+    for (const num of item.numbers) {
+      globalFreq[num] = (globalFreq[num] || 0) + 1;
+
+      if (item.userId === userId) {
+        userFreq[num] = (userFreq[num] || 0) + 1;
+      }
+    }
+  }
+
+  function getTop(freq: Record<string, number>, asc = false) {
+    return Object.entries(freq)
+      .sort((a, b) => (asc ? a[1] - b[1] : b[1] - a[1]))
+      .slice(0, 5)
+      .map(([num]) => num);
+  }
+
+  return {
+    global: {
+      hot: getTop(globalFreq),
+      cold: getTop(globalFreq, true),
+    },
+    user: {
+      hot: getTop(userFreq),
+      cold: getTop(userFreq, true),
     },
   };
 }
@@ -226,5 +240,10 @@ export async function getUserHistoryService(user: UserPayload) {
 }
 
 export async function getRankingService() {
-  return [];
+  return await prisma.numberHistory.groupBy({
+    by: ["userId"],
+    _count: { userId: true },
+    orderBy: { _count: { userId: "desc" } },
+    take: 10,
+  });
 }

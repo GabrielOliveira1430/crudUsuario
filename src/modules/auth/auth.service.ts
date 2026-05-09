@@ -1,31 +1,51 @@
 import bcrypt from 'bcrypt';
 import prisma from '../../database/prisma';
 import crypto from 'crypto';
+
 import {
   generateAccessToken,
   generateRefreshToken,
+  verifyRefreshToken,
 } from './token.service';
+
 import { MailService } from '../mail/mail.service';
 
 const mailService = new MailService();
 
-// 🔐 GERAR 2FA
+// 🔥 DEV MODE
+const DEV_MODE =
+  process.env.NODE_ENV !== 'production';
+
+
+// ========================================
+// 🔐 2FA
+// ========================================
+
 function generate2FACode() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return Math.floor(
+    100000 + Math.random() * 900000
+  ).toString();
 }
 
-// 🔐 HASH DO 2FA
 function hashCode(code: string) {
-  return crypto.createHash('sha256').update(code).digest('hex');
+  return crypto
+    .createHash('sha256')
+    .update(code)
+    .digest('hex');
 }
 
-// 🔐 LOGIN SERVICE
+
+// ========================================
+// 🔐 LOGIN
+// ========================================
+
 export async function loginService(
   email: string,
   password: string,
   ip: string,
   userAgent: string
 ) {
+
   const user = await prisma.user.findUnique({
     where: { email },
     select: {
@@ -44,40 +64,67 @@ export async function loginService(
     throw new Error('Credenciais inválidas');
   }
 
-  if (user.lockUntil && user.lockUntil > new Date()) {
-    throw new Error('Conta temporariamente bloqueada');
+  // 🔒 conta bloqueada
+  if (
+    user.lockUntil &&
+    user.lockUntil > new Date()
+  ) {
+    throw new Error(
+      'Conta temporariamente bloqueada'
+    );
   }
 
-  const passwordMatch = await bcrypt.compare(password, user.password);
+  // 🔑 senha
+  const passwordMatch =
+    await bcrypt.compare(
+      password,
+      user.password
+    );
 
   if (!passwordMatch) {
-    const attempts = user.loginAttempts + 1;
 
+    const attempts =
+      user.loginAttempts + 1;
+
+    // 🔥 bloqueio
     if (attempts >= 5) {
+
       await prisma.user.update({
         where: { id: user.id },
         data: {
           loginAttempts: 0,
-          lockUntil: new Date(Date.now() + 15 * 60 * 1000),
+          lockUntil: new Date(
+            Date.now() + 15 * 60 * 1000
+          ),
         },
       });
 
-      throw new Error('Conta temporariamente bloqueada');
+      throw new Error(
+        'Conta temporariamente bloqueada'
+      );
     }
 
     await prisma.user.update({
       where: { id: user.id },
-      data: { loginAttempts: attempts },
+      data: {
+        loginAttempts: attempts,
+      },
     });
 
     throw new Error('Credenciais inválidas');
   }
 
+  // 🔍 login suspeito
   const suspicious =
-    (user.lastLoginIp && user.lastLoginIp !== ip) ||
-    (user.lastUserAgent && user.lastUserAgent !== userAgent);
+    (user.lastLoginIp &&
+      user.lastLoginIp !== ip) ||
 
+    (user.lastUserAgent &&
+      user.lastUserAgent !== userAgent);
+
+  // 🔐 gerar 2FA
   const code = generate2FACode();
+
   const hashedCode = hashCode(code);
 
   await prisma.user.update({
@@ -85,57 +132,111 @@ export async function loginService(
     data: {
       loginAttempts: 0,
       lockUntil: null,
+
       lastLoginIp: ip,
       lastUserAgent: userAgent,
+
       twoFactorCode: hashedCode,
-      twoFactorExpires: new Date(Date.now() + 5 * 60 * 1000),
+
+      twoFactorExpires:
+        new Date(
+          Date.now() + 5 * 60 * 1000
+        ),
     },
   });
 
   try {
-    console.log('📨 Enviando 2FA para:', user.email);
-    await mailService.send2FACode(user.email, code);
-    console.log('✅ Email 2FA enviado com sucesso');
+
+    if (DEV_MODE) {
+
+      console.log(
+        '🔐 Código 2FA (DEV):',
+        code
+      );
+
+    } else {
+
+      await mailService.send2FACode(
+        user.email,
+        code
+      );
+    }
+
   } catch (err) {
-    console.error('❌ Falha ao enviar email 2FA:', err);
+
+    console.error(
+      '❌ Erro envio 2FA:',
+      err
+    );
+
+    console.log(
+      '🔐 Código fallback:',
+      code
+    );
   }
 
   return {
-    message: 'Código de verificação enviado',
+    message:
+      'Código de verificação enviado',
     suspicious,
   };
 }
 
-// 🔐 VERIFY 2FA SERVICE (🔥 CORRIGIDO)
-export async function verify2FAService(email: string, code: string) {
+
+// ========================================
+// 🔐 VERIFY 2FA
+// ========================================
+
+export async function verify2FAService(
+  email: string,
+  code: string
+) {
+
   const user = await prisma.user.findUnique({
     where: { email },
     select: {
       id: true,
       email: true,
+
       twoFactorCode: true,
       twoFactorExpires: true,
 
-      // 🔥 ESSENCIAL
       role: true,
       plan: true,
     },
   });
 
-  if (!user || !user.twoFactorCode) {
-    throw new Error('Código inválido ou expirado');
+  if (
+    !user ||
+    !user.twoFactorCode
+  ) {
+    throw new Error(
+      'Código inválido'
+    );
   }
 
-  if (user.twoFactorExpires && user.twoFactorExpires < new Date()) {
-    throw new Error('Código inválido ou expirado');
+  // ⏰ expirado
+  if (
+    !user.twoFactorExpires ||
+    user.twoFactorExpires < new Date()
+  ) {
+    throw new Error(
+      'Código expirado'
+    );
   }
 
-  const hashedCode = hashCode(code);
+  const hashedCode =
+    hashCode(code);
 
-  if (user.twoFactorCode !== hashedCode) {
-    throw new Error('Código inválido ou expirado');
+  if (
+    user.twoFactorCode !== hashedCode
+  ) {
+    throw new Error(
+      'Código inválido'
+    );
   }
 
+  // 🧹 limpa 2FA
   await prisma.user.update({
     where: { id: user.id },
     data: {
@@ -144,20 +245,29 @@ export async function verify2FAService(email: string, code: string) {
     },
   });
 
-  // 🔥 AGORA COM ROLE + PLAN
-  const accessToken = generateAccessToken(
-    user.id,
-    user.role,
-    user.plan
-  );
+  // 🔐 tokens
+  const accessToken =
+    generateAccessToken(
+      user.id,
+      user.role,
+      user.plan
+    );
 
-  const refreshToken = generateRefreshToken(user.id);
+  const refreshToken =
+    generateRefreshToken(user.id);
 
+  // 💾 salva refresh
   await prisma.refreshToken.create({
     data: {
       token: refreshToken,
+
       userId: user.id,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+
+      expiresAt:
+        new Date(
+          Date.now() +
+          7 * 24 * 60 * 60 * 1000
+        ),
     },
   });
 
@@ -167,50 +277,112 @@ export async function verify2FAService(email: string, code: string) {
   };
 }
 
-// 🔄 REFRESH SERVICE (🔥 ATUALIZADO)
-export async function refreshService(userId: number, oldToken: string) {
-  const tokenExists = await prisma.refreshToken.findUnique({
-    where: { token: oldToken },
-  });
 
-  if (!tokenExists) {
-    throw new Error('Refresh token inválido');
+// ========================================
+// 🔄 REFRESH TOKEN
+// ========================================
+
+export async function refreshService(
+  oldRefreshToken: string
+) {
+
+  // 🔍 verifica assinatura JWT
+  const payload =
+    verifyRefreshToken(
+      oldRefreshToken
+    );
+
+  const userId =
+    Number(payload.sub);
+
+  if (!userId) {
+    throw new Error(
+      'Refresh token inválido'
+    );
   }
 
-  if (tokenExists.expiresAt < new Date()) {
-    await prisma.refreshToken.delete({
-      where: { token: oldToken },
+  // 🔍 procura no banco
+  const tokenExists =
+    await prisma.refreshToken.findUnique({
+      where: {
+        token: oldRefreshToken,
+      },
     });
 
-    throw new Error('Refresh token expirado');
+  if (!tokenExists) {
+    throw new Error(
+      'Refresh token não encontrado'
+    );
   }
 
-  await prisma.refreshToken.delete({
-    where: { token: oldToken },
-  });
+  // ⏰ expirado
+  if (
+    tokenExists.expiresAt <
+    new Date()
+  ) {
 
-  // 🔥 BUSCAR USER COMPLETO
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      role: true,
-      plan: true,
+    await prisma.refreshToken.delete({
+      where: {
+        token: oldRefreshToken,
+      },
+    });
+
+    throw new Error(
+      'Refresh token expirado'
+    );
+  }
+
+  // 🔥 rotation
+  await prisma.refreshToken.delete({
+    where: {
+      token: oldRefreshToken,
     },
   });
 
-  const accessToken = generateAccessToken(
-    userId,
-    user?.role,
-    user?.plan
-  );
+  // 👤 usuário
+  const user =
+    await prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
 
-  const refreshToken = generateRefreshToken(userId);
+      select: {
+        role: true,
+        plan: true,
+      },
+    });
 
+  if (!user) {
+    throw new Error(
+      'Usuário não encontrado'
+    );
+  }
+
+  // 🔐 novos tokens
+  const accessToken =
+    generateAccessToken(
+      userId,
+      user.role,
+      user.plan
+    );
+
+  const refreshToken =
+    generateRefreshToken(
+      userId
+    );
+
+  // 💾 salva novo refresh
   await prisma.refreshToken.create({
     data: {
       token: refreshToken,
+
       userId,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+
+      expiresAt:
+        new Date(
+          Date.now() +
+          7 * 24 * 60 * 60 * 1000
+        ),
     },
   });
 
@@ -220,16 +392,23 @@ export async function refreshService(userId: number, oldToken: string) {
   };
 }
 
-// 🚪 LOGOUT SERVICE
+
+// ========================================
+// 🚪 LOGOUT
+// ========================================
+
 export async function logoutService(
-  refreshToken: string,
-  accessToken: string
+  refreshToken: string
 ) {
+
   await prisma.refreshToken.deleteMany({
-    where: { token: refreshToken },
+    where: {
+      token: refreshToken,
+    },
   });
 
   return {
-    message: 'Logout realizado com sucesso',
+    message:
+      'Logout realizado com sucesso',
   };
 }

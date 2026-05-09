@@ -3,6 +3,7 @@ import {
   generateNumbersService,
   getUserHistoryService,
   getRankingService,
+  getHotColdNumbers, // 🔥 NOVO
 } from "./numbers.service";
 
 import prisma from "../../database/prisma";
@@ -14,6 +15,13 @@ export async function generateNumbersController(req: Request, res: Response) {
     const type = req.query.type as NumberType;
     const amount = Number(req.query.amount);
 
+    // 🔥 PEGAR PALAVRAS DO SONHO
+    const wordsParam = req.query.words as string | undefined;
+    const words = wordsParam
+      ? wordsParam.split(",").map((w) => w.trim().toLowerCase())
+      : [];
+
+    // ✅ VALIDAÇÃO DE TIPO
     if (
       !type ||
       ![
@@ -27,13 +35,17 @@ export async function generateNumbersController(req: Request, res: Response) {
         "terno_dezena",
         "inversao_milhar",
         "cercado_dezena",
+        "sonho",
       ].includes(type)
     ) {
       return res.status(400).json({ error: "Tipo inválido" });
     }
 
-    if (!amount || isNaN(amount) || amount <= 0) {
-      return res.status(400).json({ error: "amount inválido" });
+    // 🔢 VALIDAÇÃO DE AMOUNT (exceto sonho)
+    if (type !== "sonho") {
+      if (!amount || isNaN(amount) || amount <= 0) {
+        return res.status(400).json({ error: "amount inválido" });
+      }
     }
 
     const user = (req as any).user;
@@ -42,7 +54,33 @@ export async function generateNumbersController(req: Request, res: Response) {
       return res.status(401).json({ error: "Não autenticado" });
     }
 
-    const result = await generateNumbersService(type, amount, user);
+    // 🧠 SALVAR PALAVRAS DO SONHO (ANALYTICS)
+    if (type === "sonho" && words.length > 0) {
+      for (const word of words) {
+        await prisma.dreamWord.upsert({
+          where: {
+            userId_word: {
+              userId: user.id,
+              word,
+            },
+          },
+          update: {
+            count: { increment: 1 },
+          },
+          create: {
+            userId: user.id,
+            word,
+            count: 1,
+          },
+        });
+      }
+    }
+
+    // 🔥 GERAR NÚMEROS
+    const result = await generateNumbersService(type, amount || 1, {
+      ...user,
+      words,
+    });
 
     return res.json(result);
   } catch (error: any) {
@@ -102,5 +140,24 @@ export async function getRankingController(req: Request, res: Response) {
     return res.json(ranking);
   } catch {
     return res.status(500).json({ error: "Erro interno" });
+  }
+}
+
+// 🔥 HOT / COLD (NOVO)
+export async function getHotColdController(req: Request, res: Response) {
+  try {
+    const user = (req as any).user;
+
+    if (!user?.id) {
+      return res.status(401).json({ error: "Não autenticado" });
+    }
+
+    const data = await getHotColdNumbers(user.id);
+
+    return res.json(data);
+  } catch (error: any) {
+    return res.status(500).json({
+      error: "Erro ao buscar números quente/frio",
+    });
   }
 }

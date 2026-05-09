@@ -4,22 +4,19 @@ import {
   getUserHistoryController,
   getRankingController,
   clearUserHistoryController,
+  getHotColdController,
 } from "./numbers.controller";
 
 import { authMiddleware } from "../../shared/middlewares/auth.middleware";
 
 const router = Router();
 
-// gerar
 router.get("/generate", authMiddleware, generateNumbersController);
-
-// histórico
 router.get("/history", authMiddleware, getUserHistoryController);
-
-// limpar histórico
 router.delete("/history", authMiddleware, clearUserHistoryController);
-
-// ranking
 router.get("/ranking", authMiddleware, getRankingController);
+
+// 🔥 NOVO
+router.get("/hot-cold", authMiddleware, getHotColdController);
 
 export default router;

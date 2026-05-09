@@ -8,9 +8,31 @@ import authRoutes from './modules/auth/auth.routes';
 import auditRoutes from './modules/audit/audit.routes';
 import securityRoutes from './modules/security/security.routes';
 import stripeRoutes from './modules/stripe/stripe.routes';
-
-// 🔥 NOVO
 import numbersRoutes from './modules/numbers/numbers.routes';
+
+// 🔥 ANALYTICS
+import analyticsRoutes from './modules/analytics/analytics.routes';
+
+// 🎰 GENERATOR
+import generatorRoutes from './modules/generator/generator.routes';
+
+// 🎯 SIMULATOR
+import simulatorRoutes from './modules/simulator/simulator.routes';
+
+// 🧠 STRATEGY ENGINE
+import strategyRoutes from './modules/strategy-engine/strategy.routes';
+
+// 🤖 DECISION ENGINE
+import decisionRoutes from './modules/decision-engine/decision.routes';
+
+// 🧬 AUTO LEARNING
+import learningRoutes from './modules/auto-learning/learning.routes';
+
+// 🧠 AI ORCHESTRATOR
+import orchestratorRoutes from './modules/ai-orchestrator/orchestrator.routes';
+
+// 🧠 LOAD STRATEGIES
+import './modules/strategy-engine/strategies';
 
 import { swaggerSetup } from './shared/config/swagger';
 import { errorMiddleware } from './shared/middlewares/error.middleware';
@@ -59,26 +81,63 @@ app.get('/', (req, res) => {
 // 📘 SWAGGER
 swaggerSetup(app);
 
+// ==========================================
 // 🛣 ROTAS
+// ==========================================
 const routes = express.Router();
 
+// 👤 USERS
 routes.use('/users', userRoutes);
+
+// 🔐 AUTH
 routes.use('/auth', authRoutes);
+
+// 📊 AUDITORIA
 routes.use('/audit-logs', auditRoutes);
+
+// 🛡️ SECURITY
 routes.use('/security', securityRoutes);
+
+// 💳 STRIPE
 routes.use('/stripe', stripeRoutes);
 
-// 🔥 ROTA DO JOGO
+// 🎲 NÚMEROS
 routes.use('/numbers', numbersRoutes);
 
+// 🧠 ANALYTICS
+routes.use('/analytics', analyticsRoutes);
+
+// 🎰 GENERATOR
+routes.use('/generator', generatorRoutes);
+
+// 🎯 SIMULATOR
+routes.use('/simulator', simulatorRoutes);
+
+// 🧠 STRATEGIES
+routes.use('/strategy', strategyRoutes);
+
+// 🤖 DECISION ENGINE
+routes.use('/decision', decisionRoutes);
+
+// 🧬 AUTO LEARNING
+routes.use('/learning', learningRoutes);
+
+// 🧠 AI ORCHESTRATOR
+routes.use('/orchestrator', orchestratorRoutes);
+
+// ==========================================
+// 🚀 API
+// ==========================================
 app.use('/api/v1', routes);
 
 // 🔍 HEALTH CHECK
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
+  res.json({
+    status: 'ok',
+  });
 });
 
-// 📊 AUDITORIA
+// 📊 AUDITORIA GLOBAL
 app.use(auditMiddleware);
 
 // ❌ ERROR HANDLER
