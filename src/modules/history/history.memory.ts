@@ -1,5 +1,7 @@
 // src/modules/history/history.memory.ts
 
+import prisma from '../../database/prisma';
+
 import {
   FakeDraw,
   HistoryGenerator
@@ -20,25 +22,96 @@ export class HistoryMemory {
   // 🚀 INIT
   // ==========================================
 
-  static init() {
+  static async init() {
+
+    // ==========================================
+    // 🚫 JÁ CARREGADO
+    // ==========================================
 
     if (
-      this.history.length === 0
+      this.history.length > 0
     ) {
+      return;
+    }
+
+    try {
 
       console.log(
-        '🧠 Gerando histórico inicial...'
+        '🧠 Carregando histórico do PostgreSQL...'
       );
 
-      this.history =
-        HistoryGenerator.generate(
-          10000
+
+      // ==========================================
+      // 🗄️ LOAD DATABASE
+      // ==========================================
+
+      const draws =
+
+        await prisma.drawHistory.findMany({
+
+          orderBy: {
+            createdAt: 'asc'
+          },
+
+          take: 10000
+        });
+
+
+      // ==========================================
+      // 🧠 DATABASE → RAM
+      // ==========================================
+
+      this.history = draws.map(draw => ({
+
+        number:
+          draw.number,
+
+        extractedAt:
+          draw.createdAt,
+
+        source:
+          draw.source || 'db'
+      }));
+
+
+      // ==========================================
+      // 🚨 FALLBACK
+      // ==========================================
+
+      if (
+        this.history.length === 0
+      ) {
+
+        console.log(
+          '⚠️ Banco vazio, gerando fake history...'
         );
+
+        this.history =
+          HistoryGenerator.generate(
+            10000
+          );
+      }
 
       console.log(
         '✅ Histórico carregado:',
         this.history.length
       );
+
+    } catch (error) {
+
+      console.error(
+        '🔴 Erro ao carregar histórico:',
+        error
+      );
+
+      // ==========================================
+      // 🚨 FAILSAFE
+      // ==========================================
+
+      this.history =
+        HistoryGenerator.generate(
+          10000
+        );
     }
   }
 
@@ -47,9 +120,9 @@ export class HistoryMemory {
   // 📋 GET ALL
   // ==========================================
 
-  static getAll() {
+  static async getAll() {
 
-    this.init();
+    await this.init();
 
     return this.history;
   }
@@ -59,11 +132,48 @@ export class HistoryMemory {
   // ➕ ADD DRAW
   // ==========================================
 
-  static addDraw(
+  static async addDraw(
     draw: FakeDraw
   ) {
 
+    // ==========================================
+    // 🧠 RAM
+    // ==========================================
+
     this.history.push(draw);
+
+
+    // ==========================================
+    // 🗄️ POSTGRESQL
+    // ==========================================
+
+    try {
+
+      await prisma.drawHistory.create({
+
+        data: {
+
+          number:
+            draw.number,
+
+          source:
+            draw.source,
+
+          metadata: {
+
+            extractedAt:
+              draw.extractedAt
+          }
+        }
+      });
+
+    } catch (error) {
+
+      console.error(
+        '🔴 Erro ao salvar draw:',
+        error
+      );
+    }
   }
 
 
@@ -71,9 +181,9 @@ export class HistoryMemory {
   // 🔢 GET NUMBERS ONLY
   // ==========================================
 
-  static getNumbers() {
+  static async getNumbers() {
 
-    this.init();
+    await this.init();
 
     return this.history.map(
       h => h.number

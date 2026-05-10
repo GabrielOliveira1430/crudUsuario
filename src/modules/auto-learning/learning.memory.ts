@@ -1,10 +1,13 @@
 // src/modules/auto-learning/learning.memory.ts
 
+import prisma from '../../database/prisma';
+
+
 // ==========================================
-// 🧠 MEMORY MODEL
+// 🧠 MEMORY TYPE
 // ==========================================
 
-export type StrategyMemory = {
+type StrategyMemory = {
 
   name: string;
 
@@ -14,36 +17,95 @@ export type StrategyMemory = {
 
   runs: number;
 
-  accuracy: number;
+  successRate: number;
 
   lastUpdate: Date;
+
+  streak: number;
+
+  trend: number;
 };
 
 
 // ==========================================
-// 🧠 LEARNING MEMORY
+// 🚀 LEARNING MEMORY
 // ==========================================
 
 export class LearningMemory {
 
   private static memory:
-    Map<string, StrategyMemory>
-      = new Map();
+    Map<string, StrategyMemory> =
+      new Map();
 
 
   // ==========================================
   // 🚀 INIT
   // ==========================================
 
-  static initStrategy(
+  static async initialize() {
+
+    const strategies =
+      await prisma.strategyLearning.findMany();
+
+    for (const strategy of strategies) {
+
+      const successRate =
+
+        strategy.runs > 0
+
+          ? strategy.hits /
+            strategy.runs
+
+          : 0;
+
+      this.memory.set(
+
+        strategy.name,
+
+        {
+
+          name:
+            strategy.name,
+
+          weight:
+            strategy.weight,
+
+          hits:
+            strategy.hits,
+
+          runs:
+            strategy.runs,
+
+          successRate,
+
+          lastUpdate:
+            new Date(),
+
+          streak: 0,
+
+          trend: 0
+        }
+      );
+    }
+
+    console.log(
+
+      `🧠 LearningMemory carregada: ${strategies.length} strategies`
+    );
+  }
+
+
+  // ==========================================
+  // 🔥 INIT STRATEGY
+  // ==========================================
+
+  static async initStrategy(
     name: string
   ) {
 
-    if (
-      !this.memory.has(name)
-    ) {
+    if (!this.memory.has(name)) {
 
-      this.memory.set(name, {
+      const strategy: StrategyMemory = {
 
         name,
 
@@ -53,78 +115,146 @@ export class LearningMemory {
 
         runs: 0,
 
-        accuracy: 0,
+        successRate: 0,
 
-        lastUpdate: new Date()
+        lastUpdate:
+          new Date(),
+
+        streak: 0,
+
+        trend: 0
+      };
+
+      // RAM
+      this.memory.set(
+        name,
+        strategy
+      );
+
+      // POSTGRES
+      await prisma.strategyLearning.upsert({
+
+        where: {
+          name
+        },
+
+        update: {},
+
+        create: {
+
+          name,
+
+          weight: 1,
+
+          hits: 0,
+
+          runs: 0
+        }
       });
+
+      console.log(
+        '🧠 Nova strategy criada:',
+        name
+      );
     }
   }
 
 
   // ==========================================
-  // 🔥 UPDATE LEARNING
+  // 🚀 UPDATE LEARNING
   // ==========================================
 
-  static update(
+  static async update(
     name: string,
-    hits: number,
-    totalGenerated = 50
+    hits: number
   ) {
 
-    this.initStrategy(name);
+    await this.initStrategy(name);
 
     const data =
       this.memory.get(name)!;
 
 
     // ==========================================
-    // 📊 UPDATE CORE
+    // 📊 RUNS
     // ==========================================
 
     data.runs += 1;
 
     data.hits += hits;
 
-    data.accuracy =
-      data.hits /
+
+    // ==========================================
+    // 📊 SUCCESS RATE
+    // ==========================================
+
+    data.successRate =
+
+      data.runs > 0
+
+        ? data.hits /
+          data.runs
+
+        : 0;
+
+
+    // ==========================================
+    // 🔥 STREAK SYSTEM
+    // ==========================================
+
+    if (hits > 0) {
+
+      data.streak += 1;
+
+    } else {
+
+      data.streak -= 1;
+    }
+
+
+    // ==========================================
+    // 📈 TREND
+    // ==========================================
+
+    data.trend =
+
       (
-        data.runs *
-        totalGenerated
+        data.successRate * 100
+      ) +
+
+      (
+        data.streak * 2
       );
 
 
     // ==========================================
-    // 🧠 CONFIDENCE FACTOR
-    // ==========================================
-
-    const confidence =
-      Math.min(
-        1,
-        data.runs / 100
-      );
-
-
-    // ==========================================
-    // ⚖️ WEIGHT FORMULA
+    // 🧠 ADAPTIVE WEIGHT
     // ==========================================
 
     const adaptiveWeight =
+
       (
-        data.accuracy * 100
-      ) * confidence;
-
-
-    // ==========================================
-    // 🔥 SMOOTHING
-    // ==========================================
-
-    data.weight =
-      (
-        data.weight * 0.7
+        data.successRate * 10
       ) +
+
       (
-        adaptiveWeight * 0.3
+        data.streak * 0.5
+      ) +
+
+      (
+        data.trend * 0.05
       );
+
+
+    data.weight = Math.max(
+
+      0.1,
+
+      Math.min(
+        20,
+        adaptiveWeight
+      )
+    );
 
 
     // ==========================================
@@ -136,34 +266,176 @@ export class LearningMemory {
 
 
     // ==========================================
-    // 💾 SAVE
+    // 💾 RAM
     // ==========================================
 
     this.memory.set(
       name,
       data
     );
+
+
+    // ==========================================
+    // 💾 DATABASE
+    // ==========================================
+
+    await prisma.strategyLearning.update({
+
+      where: {
+        name
+      },
+
+      data: {
+
+        weight:
+          data.weight,
+
+        hits:
+          data.hits,
+
+        runs:
+          data.runs
+      }
+    });
+
+
+    // ==========================================
+    // 📊 LOG
+    // ==========================================
+
+    console.log(
+
+      `🧠 Strategy ${name} atualizada | ` +
+
+      `Weight=${data.weight.toFixed(2)} | ` +
+
+      `Hits=${data.hits} | ` +
+
+      `Runs=${data.runs} | ` +
+
+      `Streak=${data.streak}`
+    );
   }
 
 
   // ==========================================
-  // 📋 GET ALL
+  // 🏆 BEST STRATEGIES
+  // ==========================================
+
+  static getBestStrategies(
+    limit = 5
+  ) {
+
+    return Array.from(
+      this.memory.values()
+    )
+
+      .sort(
+        (a, b) =>
+          b.weight - a.weight
+      )
+
+      .slice(0, limit);
+  }
+
+
+  // ==========================================
+  // ⚠️ WORST STRATEGIES
+  // ==========================================
+
+  static getWorstStrategies(
+    limit = 5
+  ) {
+
+    return Array.from(
+      this.memory.values()
+    )
+
+      .sort(
+        (a, b) =>
+          a.weight - b.weight
+      )
+
+      .slice(0, limit);
+  }
+
+
+  // ==========================================
+  // 📊 GLOBAL ANALYTICS
+  // ==========================================
+
+  static getAnalytics() {
+
+    const strategies =
+      Array.from(
+        this.memory.values()
+      );
+
+    const totalRuns =
+
+      strategies.reduce(
+        (acc, s) =>
+          acc + s.runs,
+        0
+      );
+
+    const totalHits =
+
+      strategies.reduce(
+        (acc, s) =>
+          acc + s.hits,
+        0
+      );
+
+    const avgWeight =
+
+      strategies.length > 0
+
+        ? strategies.reduce(
+            (acc, s) =>
+              acc + s.weight,
+            0
+          ) / strategies.length
+
+        : 0;
+
+    return {
+
+      totalStrategies:
+        strategies.length,
+
+      totalRuns,
+
+      totalHits,
+
+      averageWeight:
+        Number(
+          avgWeight.toFixed(2)
+        ),
+
+      bestStrategies:
+        this.getBestStrategies(),
+
+      worstStrategies:
+        this.getWorstStrategies()
+    };
+  }
+
+
+  // ==========================================
+  // 📊 GET ALL
   // ==========================================
 
   static getAll() {
 
     return Array.from(
       this.memory.values()
-    )
-      .sort(
-        (a, b) =>
-          b.weight - a.weight
-      );
+    );
   }
 
 
   // ==========================================
-  // 🎯 GET ONE
+  // 🔍 GET ONE
   // ==========================================
 
   static get(

@@ -8,6 +8,12 @@ import {
   TemporalWeightEngine
 } from '../strategy-engine/temporal-weight.engine';
 
+import {
+  RecencyAnalysisEngine
+} from '../analytics/recency-analysis.engine';
+
+import prisma from '../../database/prisma';
+
 
 // ==========================================
 // 📊 RESULT
@@ -28,6 +34,10 @@ export type ConfidenceResult = {
     learning: number;
 
     diversity: number;
+
+    recency: number;
+
+    trend: number;
   };
 };
 
@@ -40,39 +50,123 @@ export class PredictionConfidenceEngine {
 
 
   // ==========================================
+  // 📊 CACHE
+  // ==========================================
+
+  private static frequencyCache:
+    Record<string, number> = {};
+
+  private static lastCacheUpdate = 0;
+
+
+  // ==========================================
+  // 🚀 LOAD DATABASE ANALYTICS
+  // ==========================================
+
+  static async loadFrequencyCache() {
+
+    const now = Date.now();
+
+    // cache 30s
+    if (
+      now - this.lastCacheUpdate <
+      30000
+    ) {
+      return;
+    }
+
+    console.log(
+      '🧠 Atualizando Frequency Cache...'
+    );
+
+    const draws =
+      await prisma.drawHistory.findMany({
+
+        select: {
+          number: true
+        },
+
+        take: 10000,
+
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+
+    const map:
+      Record<string, number> = {};
+
+    for (const draw of draws) {
+
+      map[draw.number] =
+        (map[draw.number] || 0) + 1;
+    }
+
+    this.frequencyCache = map;
+
+    this.lastCacheUpdate = now;
+
+    console.log(
+      '✅ Frequency Cache atualizado:',
+      Object.keys(map).length,
+      'números'
+    );
+  }
+
+
+  // ==========================================
+  // 📊 FREQUENCY SCORE
+  // ==========================================
+
+  private static getFrequencyScore(
+    number: string
+  ) {
+
+    const occurrences =
+      this.frequencyCache[number] || 0;
+
+    const maxFrequency = Math.max(
+      ...Object.values(
+        this.frequencyCache
+      ),
+      1
+    );
+
+    return (
+      occurrences / maxFrequency
+    ) * 100;
+  }
+
+
+  // ==========================================
   // 🚀 CALCULATE
   // ==========================================
 
-  static calculate(
+  static async calculate(
 
     number: string,
 
     history: string[],
 
     strategy: string
-  ): ConfidenceResult {
+
+  ): Promise<ConfidenceResult> {
+
+    // ==========================================
+    // 🧠 LOAD REAL CACHE
+    // ==========================================
+
+    await this.loadFrequencyCache();
 
 
     // ==========================================
-    // 📊 FREQUENCY
+    // 📊 REAL FREQUENCY
     // ==========================================
-
-    const occurrences =
-
-      history.filter(
-        n => n === number
-      ).length;
 
     const frequency =
-
-      history.length > 0
-
-        ? (
-            occurrences /
-            history.length
-          ) * 100
-
-        : 0;
+      this.getFrequencyScore(
+        number
+      );
 
 
     // ==========================================
@@ -107,6 +201,7 @@ export class PredictionConfidenceEngine {
         strategy,
 
         currentHour
+
       ) * 10;
 
 
@@ -126,25 +221,57 @@ export class PredictionConfidenceEngine {
 
 
     // ==========================================
+    // 🕒 REAL RECENCY
+    // ==========================================
+
+    const recency =
+
+      await RecencyAnalysisEngine
+        .getRecencyScore(
+          number
+        );
+
+
+    // ==========================================
+    // 📈 REAL TREND
+    // ==========================================
+
+    const trend =
+
+      await RecencyAnalysisEngine
+        .getTrendScore(
+          number
+        );
+
+
+    // ==========================================
     // 📊 FINAL SCORE
     // ==========================================
 
     const confidence =
 
       (
-        frequency * 0.35
+        frequency * 0.30
       ) +
 
       (
-        learning * 0.30
+        learning * 0.20
       ) +
 
       (
-        temporal * 0.20
+        temporal * 0.10
       ) +
 
       (
-        diversity * 0.15
+        diversity * 0.10
+      ) +
+
+      (
+        recency * 0.15
+      ) +
+
+      (
+        trend * 0.15
       );
 
 
@@ -177,6 +304,16 @@ export class PredictionConfidenceEngine {
         diversity:
           Number(
             diversity.toFixed(2)
+          ),
+
+        recency:
+          Number(
+            recency.toFixed(2)
+          ),
+
+        trend:
+          Number(
+            trend.toFixed(2)
           )
       }
     };

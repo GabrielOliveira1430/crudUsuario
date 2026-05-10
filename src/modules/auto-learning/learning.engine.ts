@@ -24,22 +24,32 @@ export class LearningEngine {
   // 🚀 LEARN
   // ==========================================
 
-  static learn(
+  static async learn(
     history: string[]
   ) {
 
     const results =
+
       StrategyService.runAll(
         history
       );
 
 
     // ==========================================
-    // 🕒 HORA ATUAL
+    // 🕒 CURRENT HOUR
     // ==========================================
 
     const currentHour =
       new Date().getHours();
+
+
+    // ==========================================
+    // 📊 SUMMARY
+    // ==========================================
+
+    let totalHits = 0;
+
+    let totalAccuracy = 0;
 
 
     // ==========================================
@@ -48,31 +58,72 @@ export class LearningEngine {
 
     for (const r of results) {
 
+      const hits =
+        r.simulation.hits;
+
+      const accuracy =
+        r.simulation.accuracy;
+
+      totalHits += hits;
+
+      totalAccuracy += accuracy;
+
+
       // ==========================================
-      // 🌍 GLOBAL LEARNING
+      // 🌍 GLOBAL MEMORY
       // ==========================================
 
-      LearningMemory.update(
+      await LearningMemory.update(
 
         r.strategy,
 
-        r.simulation.hits
+        hits
       );
 
 
       // ==========================================
-      // 🕒 TEMPORAL LEARNING
+      // 🕒 TEMPORAL MEMORY
       // ==========================================
 
-      TemporalWeightEngine.update(
+      await TemporalWeightEngine.update(
 
         r.strategy,
 
-        r.simulation.hits,
+        hits,
 
         currentHour
       );
     }
+
+
+    // ==========================================
+    // 📊 AVERAGES
+    // ==========================================
+
+    const averageAccuracy =
+
+      results.length > 0
+
+        ? totalAccuracy / results.length
+
+        : 0;
+
+
+    // ==========================================
+    // 🏆 BEST STRATEGY
+    // ==========================================
+
+    const best =
+
+      results.sort(
+
+        (a, b) =>
+
+          b.simulation.accuracy -
+
+          a.simulation.accuracy
+
+      )[0];
 
 
     // ==========================================
@@ -81,8 +132,26 @@ export class LearningEngine {
 
     return {
 
+      success: true,
+
       message:
-        'Learning atualizado',
+        'Learning atualizado com sucesso',
+
+      processedStrategies:
+        results.length,
+
+      totalHits,
+
+      averageAccuracy:
+        Number(
+          averageAccuracy.toFixed(2)
+        ),
+
+      bestStrategy:
+        best?.strategy || null,
+
+      bestAccuracy:
+        best?.simulation.accuracy || 0,
 
       globalMemory:
         LearningMemory.getAll(),
@@ -102,6 +171,7 @@ export class LearningEngine {
   ) {
 
     const results =
+
       StrategyService.runAll(
         history
       );
@@ -122,6 +192,7 @@ export class LearningEngine {
       results.map(r => {
 
         const globalMemory =
+
           memory.find(
             m =>
               m.name ===
@@ -139,7 +210,7 @@ export class LearningEngine {
 
 
         // ==========================================
-        // ⚖️ WEIGHT FINAL
+        // ⚖️ FINAL WEIGHT
         // ==========================================
 
         const finalWeight =
@@ -148,9 +219,31 @@ export class LearningEngine {
             (
               globalMemory?.weight || 1
             )
+
             +
+
             temporalWeight
+
           ) / 2;
+
+
+        // ==========================================
+        // 📊 SMART SCORE
+        // ==========================================
+
+        const smartScore =
+
+          (
+            r.simulation.accuracy *
+            0.6
+          )
+
+          +
+
+          (
+            finalWeight * 10 *
+            0.4
+          );
 
 
         return {
@@ -159,17 +252,36 @@ export class LearningEngine {
             r.strategy,
 
           accuracy:
-            r.simulation.accuracy,
+            Number(
+              r.simulation.accuracy
+                .toFixed(2)
+            ),
 
           hits:
             r.simulation.hits,
 
-          temporalWeight,
+          temporalWeight:
+            Number(
+              temporalWeight
+                .toFixed(2)
+            ),
 
           globalWeight:
-            globalMemory?.weight || 1,
+            Number(
+              (
+                globalMemory?.weight || 1
+              ).toFixed(2)
+            ),
 
-          finalWeight
+          finalWeight:
+            Number(
+              finalWeight.toFixed(2)
+            ),
+
+          smartScore:
+            Number(
+              smartScore.toFixed(2)
+            )
         };
       });
 
@@ -182,17 +294,94 @@ export class LearningEngine {
 
       (a, b) =>
 
-        (
-          b.accuracy *
-          b.finalWeight
-        )
+        b.smartScore -
 
-        -
-
-        (
-          a.accuracy *
-          a.finalWeight
-        )
+        a.smartScore
     );
+  }
+
+
+  // ==========================================
+  // 🧠 GET DOMINANT STRATEGY
+  // ==========================================
+
+  static getDominantStrategy(
+    history: string[]
+  ) {
+
+    const ranking =
+      this.getSmartRanking(
+        history
+      );
+
+    return ranking[0] || null;
+  }
+
+
+  // ==========================================
+  // 📊 SYSTEM INSIGHTS
+  // ==========================================
+
+  static getInsights(
+    history: string[]
+  ) {
+
+    const ranking =
+      this.getSmartRanking(
+        history
+      );
+
+    const dominant =
+      ranking[0];
+
+    const weakest =
+      ranking[
+        ranking.length - 1
+      ];
+
+
+    return {
+
+      dominantStrategy:
+        dominant?.strategy || null,
+
+      dominantScore:
+        dominant?.smartScore || 0,
+
+      weakestStrategy:
+        weakest?.strategy || null,
+
+      weakestScore:
+        weakest?.smartScore || 0,
+
+      totalStrategies:
+        ranking.length,
+
+      averageScore:
+
+        ranking.length > 0
+
+          ? Number(
+
+              (
+                ranking.reduce(
+
+                  (acc, item) =>
+
+                    acc +
+                    item.smartScore,
+
+                  0
+                )
+
+                /
+
+                ranking.length
+
+              ).toFixed(2)
+            )
+
+          : 0
+    };
   }
 }

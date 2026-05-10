@@ -5,8 +5,8 @@ import {
 } from './history.memory';
 
 import {
-  FakeDraw
-} from './history.generator';
+  GeneratorService
+} from '../generator/generator.service';
 
 
 // ==========================================
@@ -14,64 +14,6 @@ import {
 // ==========================================
 
 export class HistoryRealtimeEngine {
-
-
-  // ==========================================
-  // 🎲 GERA NOVO DRAW
-  // ==========================================
-
-  static generateDraw(): FakeDraw {
-
-    const hotNumbers = [
-      '1234',
-      '5678',
-      '9999',
-      '1111',
-      '2222'
-    ];
-
-    let number: string;
-
-
-    // 🔥 15% chance hot
-    if (Math.random() < 0.15) {
-
-      number =
-        hotNumbers[
-          Math.floor(
-            Math.random() *
-            hotNumbers.length
-          )
-        ];
-
-    } else {
-
-      number =
-        Math.floor(
-          Math.random() * 10000
-        )
-          .toString()
-          .padStart(4, '0');
-    }
-
-    return {
-
-      number,
-
-      extractedAt: new Date(),
-
-      source: [
-        'PTM',
-        'PT',
-        'LOOK',
-        'NACIONAL'
-      ][
-        Math.floor(
-          Math.random() * 4
-        )
-      ]
-    };
-  }
 
 
   // ==========================================
@@ -84,17 +26,74 @@ export class HistoryRealtimeEngine {
       '⚡ Realtime Engine iniciado'
     );
 
-    setInterval(() => {
+    setInterval(async () => {
 
-      const draw =
-        this.generateDraw();
+      try {
 
-      HistoryMemory.addDraw(draw);
+        // ==========================================
+        // 🧠 GENERATE AI DRAW
+        // ==========================================
 
-      console.log(
-        '🎲 Novo sorteio:',
-        draw.number
-      );
+        const generated =
+
+          await GeneratorService.generate({
+
+            quantity: 1,
+
+            mode: 'balanced'
+          });
+
+        const result =
+          generated.numbers[0];
+
+        if (!result) {
+          return;
+        }
+
+
+        // ==========================================
+        // 💾 SAVE MEMORY
+        // ==========================================
+
+        await HistoryMemory.addDraw({
+
+          number:
+            result.number,
+
+          extractedAt:
+            new Date(),
+
+          source:
+            `AI-${result.source.toUpperCase()}`
+        });
+
+
+        // ==========================================
+        // 📊 LOG
+        // ==========================================
+
+        console.log(
+
+          '🎲 Novo sorteio IA:',
+
+          result.number,
+
+          '| conf:',
+
+          result.confidence,
+
+          '| strategy:',
+
+          result.source
+        );
+
+      } catch (error) {
+
+        console.error(
+          '🔴 Erro realtime:',
+          error
+        );
+      }
 
     }, 5000);
   }

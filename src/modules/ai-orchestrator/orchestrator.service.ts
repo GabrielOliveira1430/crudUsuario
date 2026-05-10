@@ -32,6 +32,14 @@ import {
   StrategyRetirementEngine
 } from '../self-improvement/strategy-retirement.engine';
 
+import {
+  StrategyEvolutionEngine
+} from '../self-improvement/strategy-evolution.engine';
+
+import {
+  MutationFactoryEngine
+} from '../self-improvement/mutation-factory.engine';
+
 
 // ==========================================
 // 🧠 AI ORCHESTRATOR
@@ -44,9 +52,13 @@ export class OrchestratorService {
   // 🚀 PIPELINE CENTRAL
   // ==========================================
 
-  static run(
+  static async run(
     history: string[]
   ) {
+
+    // ==========================================
+    // ✅ VALIDATION
+    // ==========================================
 
     if (
       !history ||
@@ -67,23 +79,6 @@ export class OrchestratorService {
       AnalyticsService.getStats(
         history.map(Number)
       );
-
-
-    // ==========================================
-    // 🔥 HOT/COLD CONTEXT
-    // ==========================================
-
-    const hotNumbers =
-
-      analytics.hotNumbers?.map(
-        n => n.number
-      ) || [];
-
-    const coldNumbers =
-
-      analytics.coldNumbers?.map(
-        n => n.number
-      ) || [];
 
 
     // ==========================================
@@ -111,19 +106,33 @@ export class OrchestratorService {
 
 
     // ==========================================
-    // 🎲 5. GENERATOR
+    // 🧬 5. STRATEGY EVOLUTION
+    // ==========================================
+
+    const evolution =
+      await StrategyEvolutionEngine
+        .analyze();
+
+
+    // ==========================================
+    // 🧬 6. MUTATION FACTORY
+    // ==========================================
+
+    const mutations =
+      await MutationFactoryEngine
+        .createMutations();
+
+
+    // ==========================================
+    // 🎲 7. GENERATOR
     // ==========================================
 
     const generated =
-      GeneratorService.generate({
+      await GeneratorService.generate({
 
         quantity: 50,
 
         size: 4,
-
-        hotNumbers,
-
-        coldNumbers,
 
         exploration:
           balance.exploration,
@@ -137,7 +146,7 @@ export class OrchestratorService {
 
 
     // ==========================================
-    // 🧠 6. STRATEGIES
+    // 🧠 8. STRATEGIES
     // ==========================================
 
     const strategies =
@@ -147,7 +156,7 @@ export class OrchestratorService {
 
 
     // ==========================================
-    // 🧪 7. DECISION ENGINE
+    // 🧪 9. DECISION ENGINE
     // ==========================================
 
     const decision =
@@ -157,11 +166,11 @@ export class OrchestratorService {
 
 
     // ==========================================
-    // 🤖 8. AUTO LEARNING
+    // 🤖 10. AUTO LEARNING
     // ==========================================
 
     const learning =
-      LearningEngine.learn(
+      await LearningEngine.learn(
         history
       );
 
@@ -171,11 +180,11 @@ export class OrchestratorService {
     // ==========================================
 
     const bestRanking =
-      decision.ranking[0];
+      decision.ranking?.[0];
 
 
     // ==========================================
-    // 🚨 GLOBAL ALERT LEVEL
+    // 🚨 ALERT LEVEL
     // ==========================================
 
     const alertLevel =
@@ -190,10 +199,14 @@ export class OrchestratorService {
 
 
     // ==========================================
-    // 🔥 OUTPUT FINAL
+    // 🚀 FINAL OUTPUT
     // ==========================================
 
     return {
+
+      // ==========================================
+      // 📊 CORE
+      // ==========================================
 
       analytics,
 
@@ -205,11 +218,25 @@ export class OrchestratorService {
 
       learning,
 
+
+      // ==========================================
+      // 🧠 AI SYSTEMS
+      // ==========================================
+
       health,
 
       balance,
 
       retirement,
+
+      evolution,
+
+      mutations,
+
+
+      // ==========================================
+      // 🖥 SYSTEM
+      // ==========================================
 
       system: {
 
@@ -227,9 +254,18 @@ export class OrchestratorService {
 
           ...balance.recommendations,
 
-          ...retirement.recommendations
+          ...retirement.recommendations,
+
+          ...evolution.recommendations,
+
+          ...mutations.recommendations
         ]
       },
+
+
+      // ==========================================
+      // 📈 SUMMARY
+      // ==========================================
 
       summary: {
 
@@ -264,7 +300,13 @@ export class OrchestratorService {
           balance.mode,
 
         retiredStrategies:
-          retirement.retiredCount
+          retirement.retiredCount,
+
+        evolvedStrategies:
+          evolution.bestStrategies.length,
+
+        mutationsCreated:
+          mutations.created.length
       }
     };
   }

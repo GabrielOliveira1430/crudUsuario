@@ -1,16 +1,34 @@
-if (process.env.NODE_ENV !== 'production') {
+if (
+  process.env.NODE_ENV !== 'production'
+) {
   require('dotenv').config();
 }
 
 import app from './app';
 
-import { redis } from './shared/config/redis';
+import { redis }
+  from './shared/config/redis';
 
 import {
   HistoryRealtimeEngine
 } from './modules/history/history.realtime';
 
-const PORT = Number(process.env.PORT) || 3000;
+import {
+  LearningMemory
+} from './modules/auto-learning/learning.memory';
+
+import {
+  DrawSyncService
+} from './modules/draw-sync/draw-sync.service';
+
+
+const PORT =
+  Number(process.env.PORT) || 3000;
+
+
+// ==========================================
+// 🚀 SERVER START
+// ==========================================
 
 async function startServer() {
 
@@ -20,6 +38,11 @@ async function startServer() {
       '🔥 REDIS_URL:',
       process.env.REDIS_URL || 'não configurado'
     );
+
+
+    // ==========================================
+    // 🔴 REDIS
+    // ==========================================
 
     if (redis) {
 
@@ -46,10 +69,44 @@ async function startServer() {
       }
     }
 
+
+    // ==========================================
+    // 🧠 LOAD LEARNING MEMORY
+    // ==========================================
+
+    await LearningMemory.initialize();
+
+    console.log(
+      '🧠 LearningMemory inicializada'
+    );
+
+
+    // ==========================================
+    // 📡 SYNC REAL LOTTERY DATA
+    // ==========================================
+
+    await DrawSyncService
+      .syncMegaSena();
+
+    console.log(
+      '🎰 Mega-Sena sincronizada'
+    );
+
+
     // ==========================================
     // 🚀 START REALTIME HISTORY ENGINE
     // ==========================================
+
     HistoryRealtimeEngine.start();
+
+    console.log(
+      '📡 HistoryRealtimeEngine iniciado'
+    );
+
+
+    // ==========================================
+    // 🚀 START SERVER
+    // ==========================================
 
     app.listen(
       PORT,
@@ -86,11 +143,18 @@ async function startServer() {
   }
 }
 
+
+// ==========================================
+// 🚀 AUTO START
+// ==========================================
+
 if (
   process.env.NODE_ENV !== 'test'
 ) {
+
   startServer();
 }
+
 
 export {
   startServer

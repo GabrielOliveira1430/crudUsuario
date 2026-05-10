@@ -20,6 +20,10 @@ import {
   PatternDetectionEngine
 } from '../pattern/pattern-detection.engine';
 
+import {
+  FrequencyAnalysisEngine
+} from '../analytics/frequency-analysis.engine';
+
 
 // ==========================================
 // 🎯 PARAMS
@@ -29,11 +33,7 @@ type GenerateParams = {
 
   quantity: number;
 
-  size: number;
-
-  hotNumbers?: number[];
-
-  coldNumbers?: number[];
+  size?: number;
 
   exploration?: number;
 
@@ -72,88 +72,23 @@ type GeneratedResult = {
     learning: number;
 
     diversity: number;
+
+    recency: number;
+
+    trend: number;
   };
 };
 
 
 // ==========================================
-// 🧠 ADAPTIVE GENERATOR
+// 🧠 GENERATOR SERVICE
 // ==========================================
 
 export class GeneratorService {
 
 
   // ==========================================
-  // 🎲 RANDOM BASE
-  // ==========================================
-
-  private static randomNumber(
-    size: number
-  ) {
-
-    const max =
-      Math.pow(10, size);
-
-    return Math.floor(
-      Math.random() * max
-    )
-      .toString()
-      .padStart(size, '0');
-  }
-
-
-  // ==========================================
-  // 🔥 HOT GENERATOR
-  // ==========================================
-
-  private static generateHot() {
-
-    const hot = [
-
-      '1234',
-      '5678',
-      '9999',
-      '1111',
-      '2222',
-      '3333',
-      '4444'
-    ];
-
-    return hot[
-      Math.floor(
-        Math.random() *
-        hot.length
-      )
-    ];
-  }
-
-
-  // ==========================================
-  // ❄️ COLD GENERATOR
-  // ==========================================
-
-  private static generateCold() {
-
-    const cold = [
-
-      '8080',
-      '7070',
-      '6060',
-      '5050',
-      '4040'
-    ];
-
-    return cold[
-      Math.floor(
-        Math.random() *
-        cold.length
-      )
-    ];
-  }
-
-
-  // ==========================================
-  // 🧠 STRATEGY WEIGHTS
+  // 📊 STRATEGY WEIGHTS
   // ==========================================
 
   private static getWeights() {
@@ -161,40 +96,89 @@ export class GeneratorService {
     const memory =
       LearningMemory.getAll();
 
-    const hot =
-      memory.find(
-        m => m.name === 'hot'
-      )?.weight || 1;
-
-    const cold =
-      memory.find(
-        m => m.name === 'cold'
-      )?.weight || 1;
-
-    const random =
-      memory.find(
-        m => m.name === 'random'
-      )?.weight || 1;
-
     return {
-      hot,
-      cold,
-      random
+
+      hot:
+        memory.find(
+          m => m.name === 'hot'
+        )?.weight || 1,
+
+      cold:
+        memory.find(
+          m => m.name === 'cold'
+        )?.weight || 1,
+
+      random:
+        memory.find(
+          m => m.name === 'random'
+        )?.weight || 1
     };
   }
 
 
   // ==========================================
-  // 🧠 BALANCED CLUSTER NUMBER
+  // 🔥 HOT NUMBER
   // ==========================================
 
-  private static generateBalancedRandom() {
+  private static async generateHot() {
+
+    const hot =
+
+      await FrequencyAnalysisEngine
+        .getHotNumbers(30);
+
+    if (!hot.length) {
+
+      return '1234';
+    }
+
+    return hot[
+      Math.floor(
+        Math.random() *
+        hot.length
+      )
+    ].number;
+  }
+
+
+  // ==========================================
+  // ❄️ COLD NUMBER
+  // ==========================================
+
+  private static async generateCold() {
+
+    const cold =
+
+      await FrequencyAnalysisEngine
+        .getColdNumbers(30);
+
+    if (!cold.length) {
+
+      return '0000';
+    }
+
+    return cold[
+      Math.floor(
+        Math.random() *
+        cold.length
+      )
+    ].number;
+  }
+
+
+  // ==========================================
+  // 🎲 RANDOM CLUSTER
+  // ==========================================
+
+  private static async generateBalancedRandom() {
+
+    const existingData =
+      await HistoryMemory.getAll();
 
     const existing =
-
-      HistoryMemory
-        .getAll()
-        .map(h => h.number);
+      existingData.map(
+        h => h.number
+      );
 
     const lightest =
 
@@ -230,13 +214,12 @@ export class GeneratorService {
   // 🚀 MAIN GENERATOR
   // ==========================================
 
-  static generate(
+  static async generate(
     params: GenerateParams
   ) {
 
     const {
       quantity,
-      size,
       exploration = 50,
       exploitation = 50,
       mode = 'balanced'
@@ -245,19 +228,16 @@ export class GeneratorService {
     const weights =
       this.getWeights();
 
-    const history =
+    const historyData =
+      await HistoryMemory.getAll();
 
-      HistoryMemory
-        .getAll()
-        .map(h => h.number);
+    const history =
+      historyData.map(
+        h => h.number
+      );
 
     const results:
       GeneratedResult[] = [];
-
-
-    // ==========================================
-    // 📊 TOTAL WEIGHT
-    // ==========================================
 
     const totalWeight =
 
@@ -280,31 +260,21 @@ export class GeneratorService {
         Math.random() *
         totalWeight;
 
-
-      // ==========================================
-      // 🚀 EXPLORATION BOOST
-      // ==========================================
-
+      // exploration
       if (
         mode === 'exploration'
       ) {
 
-        // aumenta chance random
         roll +=
           weights.hot +
           weights.cold;
       }
 
-
-      // ==========================================
-      // 🎯 EXPLOITATION BOOST
-      // ==========================================
-
+      // exploitation
       if (
         mode === 'exploitation'
       ) {
 
-        // favorece melhores strategies
         roll *= 0.6;
       }
 
@@ -326,10 +296,9 @@ export class GeneratorService {
       ) {
 
         number =
-          this.generateHot();
+          await this.generateHot();
 
-        source =
-          'hot';
+        source = 'hot';
 
         weight =
           weights.hot;
@@ -351,10 +320,9 @@ export class GeneratorService {
       ) {
 
         number =
-          this.generateCold();
+          await this.generateCold();
 
-        source =
-          'cold';
+        source = 'cold';
 
         weight =
           weights.cold;
@@ -362,14 +330,14 @@ export class GeneratorService {
 
 
       // ==========================================
-      // 🎲 BALANCED RANDOM
+      // 🎲 RANDOM
       // ==========================================
 
       else {
 
         const balanced =
 
-          this.generateBalancedRandom();
+          await this.generateBalancedRandom();
 
         number =
           balanced.number;
@@ -377,8 +345,7 @@ export class GeneratorService {
         cluster =
           balanced.cluster;
 
-        source =
-          'random';
+        source = 'random';
 
         weight =
           weights.random;
@@ -412,12 +379,12 @@ export class GeneratorService {
 
 
       // ==========================================
-      // 🧠 CONFIDENCE
+      // 📊 CONFIDENCE
       // ==========================================
 
       const confidenceData =
 
-        PredictionConfidenceEngine
+        await PredictionConfidenceEngine
           .calculate(
 
             number,
@@ -429,7 +396,7 @@ export class GeneratorService {
 
 
       // ==========================================
-      // 🧠 FINAL CONFIDENCE
+      // 🧠 FINAL SCORE
       // ==========================================
 
       const finalConfidence =
@@ -483,7 +450,7 @@ export class GeneratorService {
 
 
     // ==========================================
-    // 🏆 SORT BY CONFIDENCE
+    // 🏆 SORT
     // ==========================================
 
     results.sort(
@@ -494,7 +461,7 @@ export class GeneratorService {
 
 
     // ==========================================
-    // 📊 COVERAGE ANALYTICS
+    // 📊 COVERAGE
     // ==========================================
 
     const coverage =
@@ -557,7 +524,7 @@ export class GeneratorService {
 
 
     // ==========================================
-    // 📊 FINAL
+    // 🚀 FINAL
     // ==========================================
 
     return {

@@ -1,7 +1,14 @@
-import { Request, Response } from 'express';
 
-import { OrchestratorService }
-  from './orchestrator.service';
+
+
+import {
+  Request,
+  Response
+} from 'express';
+
+import {
+  OrchestratorService
+} from './orchestrator.service';
 
 import {
   HistoryMemory
@@ -19,42 +26,84 @@ export class OrchestratorController {
   // 🚀 EXECUTA PIPELINE
   // ==========================================
 
-  static run(
+  static async run(
     req: Request,
     res: Response
   ) {
 
-    let { history } = req.body;
+    try {
 
-
-    // ==========================================
-    // 🔥 AUTO HISTORY
-    // ==========================================
-
-    if (
-      !history ||
-      !Array.isArray(history)
-    ) {
-
-      history =
-        HistoryMemory.getNumbers();
-
-      console.log(
-        '🧠 Histórico carregado da memória:',
-        history.length
-      );
-    }
-
-
-    // ==========================================
-    // 🚀 ORCHESTRATOR
-    // ==========================================
-
-    const result =
-      OrchestratorService.run(
+      let {
         history
+      } = req.body;
+
+
+      // ==========================================
+      // 🔥 AUTO HISTORY
+      // ==========================================
+
+      if (
+        !history ||
+        !Array.isArray(history)
+      ) {
+
+        history =
+          HistoryMemory.getNumbers();
+
+        console.log(
+
+          '🧠 Histórico carregado da memória:',
+
+          history.length
+        );
+      }
+
+
+      // ==========================================
+      // 🚀 ORCHESTRATOR
+      // ==========================================
+
+      const result =
+
+        await OrchestratorService.run(
+          history
+        );
+
+
+      // ==========================================
+      // ✅ RESPONSE PADRONIZADO
+      // ==========================================
+
+      return res.status(200).json({
+
+        success: true,
+
+        timestamp:
+          new Date(),
+
+        data: result
+      });
+
+    } catch (error: any) {
+
+      console.error(
+
+        '🔴 Orchestrator Error:',
+
+        error
       );
 
-    return res.json(result);
+      return res.status(500).json({
+
+        success: false,
+
+        message:
+
+          error.message ||
+
+          'Erro interno no orchestrator'
+      });
+    }
   }
 }
+

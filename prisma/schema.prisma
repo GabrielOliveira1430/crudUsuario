@@ -222,3 +222,29 @@ model StrategyLearning {
 
   @@map("strategy_learning")
 }
+
+// ==========================================
+// 🎲 DRAW HISTORY
+// ==========================================
+
+model DrawHistory {
+
+  id Int @id @default(autoincrement())
+
+  // número sorteado
+  number String
+
+  // origem
+  source String? @default("realtime")
+
+  // metadata futura
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([number])
+
+  @@index([createdAt])
+
+  @@map("draw_history")
+}
