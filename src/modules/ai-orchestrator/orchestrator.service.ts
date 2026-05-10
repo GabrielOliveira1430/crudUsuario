@@ -47,17 +47,19 @@ import {
 
 export class OrchestratorService {
 
-
-  // ==========================================
-  // 🚀 PIPELINE CENTRAL
-  // ==========================================
-
   static async run(
     history: string[]
   ) {
 
+    console.log(
+      '🚀 ORCHESTRATOR START'
+    );
+
+    const start =
+      Date.now();
+
     // ==========================================
-    // ✅ VALIDATION
+    // VALIDATION
     // ==========================================
 
     if (
@@ -70,67 +72,65 @@ export class OrchestratorService {
       );
     }
 
+    // ==========================================
+    // FAST SYSTEMS
+    // ==========================================
 
-    // ==========================================
-    // 📊 1. ANALYTICS
-    // ==========================================
+    console.log(
+      '📊 ANALYTICS'
+    );
 
     const analytics =
       AnalyticsService.getStats(
         history.map(Number)
       );
 
-
-    // ==========================================
-    // 🧠 2. SYSTEM HEALTH
-    // ==========================================
+    console.log(
+      '🧠 HEALTH'
+    );
 
     const health =
       SystemHealthEngine.analyze();
 
-
-    // ==========================================
-    // ⚖️ 3. EXPLORATION BALANCE
-    // ==========================================
+    console.log(
+      '⚖️ BALANCE'
+    );
 
     const balance =
       ExplorationBalanceEngine.analyze();
 
-
-    // ==========================================
-    // ☠️ 4. STRATEGY RETIREMENT
-    // ==========================================
+    console.log(
+      '☠️ RETIREMENT'
+    );
 
     const retirement =
       StrategyRetirementEngine.analyze();
 
-
     // ==========================================
-    // 🧬 5. STRATEGY EVOLUTION
-    // ==========================================
-
-    const evolution =
-      await StrategyEvolutionEngine
-        .analyze();
-
-
-    // ==========================================
-    // 🧬 6. MUTATION FACTORY
+    // PARALLEL ENGINES
     // ==========================================
 
-    const mutations =
-      await MutationFactoryEngine
-        .createMutations();
+    console.log(
+      '⚡ RUNNING PARALLEL ENGINES'
+    );
 
+    const [
 
-    // ==========================================
-    // 🎲 7. GENERATOR
-    // ==========================================
+      evolution,
+      mutations,
+      generated,
+      learning
 
-    const generated =
-      await GeneratorService.generate({
+    ] = await Promise.all([
 
-        quantity: 50,
+      StrategyEvolutionEngine.analyze(),
+
+      MutationFactoryEngine
+        .createMutations(),
+
+      GeneratorService.generate({
+
+        quantity: 20,
 
         size: 4,
 
@@ -142,50 +142,45 @@ export class OrchestratorService {
 
         mode:
           balance.mode
-      });
+      }),
 
+      LearningEngine.learn(
+        history
+      )
+    ]);
 
     // ==========================================
-    // 🧠 8. STRATEGIES
+    // STRATEGIES
     // ==========================================
+
+    console.log(
+      '🎯 STRATEGIES'
+    );
 
     const strategies =
       StrategyService.runAll(
         history
       );
 
+    // ==========================================
+    // DECISION
+    // ==========================================
 
-    // ==========================================
-    // 🧪 9. DECISION ENGINE
-    // ==========================================
+    console.log(
+      '🧠 DECISION'
+    );
 
     const decision =
       DecisionService.decide(
         history
       );
 
-
     // ==========================================
-    // 🤖 10. AUTO LEARNING
-    // ==========================================
-
-    const learning =
-      await LearningEngine.learn(
-        history
-      );
-
-
-    // ==========================================
-    // 📈 SUMMARY
+    // SUMMARY
     // ==========================================
 
     const bestRanking =
       decision.ranking?.[0];
-
-
-    // ==========================================
-    // 🚨 ALERT LEVEL
-    // ==========================================
 
     const alertLevel =
 
@@ -197,16 +192,17 @@ export class OrchestratorService {
 
       : 'LOW';
 
+    console.log(
+      '✅ ORCHESTRATOR FINISHED IN:',
+      Date.now() - start,
+      'ms'
+    );
 
     // ==========================================
-    // 🚀 FINAL OUTPUT
+    // OUTPUT
     // ==========================================
 
     return {
-
-      // ==========================================
-      // 📊 CORE
-      // ==========================================
 
       analytics,
 
@@ -218,11 +214,6 @@ export class OrchestratorService {
 
       learning,
 
-
-      // ==========================================
-      // 🧠 AI SYSTEMS
-      // ==========================================
-
       health,
 
       balance,
@@ -232,11 +223,6 @@ export class OrchestratorService {
       evolution,
 
       mutations,
-
-
-      // ==========================================
-      // 🖥 SYSTEM
-      // ==========================================
 
       system: {
 
@@ -261,11 +247,6 @@ export class OrchestratorService {
           ...mutations.recommendations
         ]
       },
-
-
-      // ==========================================
-      // 📈 SUMMARY
-      // ==========================================
 
       summary: {
 
