@@ -1,5 +1,3 @@
-// src/modules/ai-orchestrator/orchestrator.service.ts
-
 import {
   LearningEngine
 } from '../auto-learning/learning.engine';
@@ -39,6 +37,14 @@ import {
 import {
   MutationFactoryEngine
 } from '../self-improvement/mutation-factory.engine';
+
+import {
+  FootballProvider
+} from '../football/football.provider';
+
+import {
+  FootballAnalytics
+} from '../football/football.analytics';
 
 
 // ==========================================
@@ -119,7 +125,8 @@ export class OrchestratorService {
       evolution,
       mutations,
       generated,
-      learning
+      learning,
+      footballLive
 
     ] = await Promise.all([
 
@@ -146,8 +153,66 @@ export class OrchestratorService {
 
       LearningEngine.learn(
         history
-      )
+      ),
+
+      FootballProvider
+        .getLiveMatches()
+
     ]);
+
+    // ==========================================
+    // ⚽ FOOTBALL
+    // ==========================================
+
+    let football: {
+
+      enabled: boolean;
+
+      totalMatches: number;
+
+      topTeams: any[];
+
+    } = {
+
+      enabled: false,
+
+      totalMatches: 0,
+
+      topTeams: []
+    };
+
+    try {
+
+      if (footballLive.success) {
+
+        const analyzed =
+
+          FootballAnalytics.analyze(
+            footballLive.matches
+          );
+
+        football = {
+
+          enabled: true,
+
+          totalMatches:
+            footballLive.total,
+
+          topTeams:
+            analyzed.slice(0, 10)
+        };
+
+        console.log(
+          '⚽ Football Engine ativo'
+        );
+      }
+
+    } catch (error) {
+
+      console.log(
+        '⚠️ Football Engine offline'
+      );
+    }
 
     // ==========================================
     // STRATEGIES
@@ -203,6 +268,8 @@ export class OrchestratorService {
     // ==========================================
 
     return {
+
+      football,
 
       analytics,
 

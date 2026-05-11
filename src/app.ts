@@ -31,6 +31,9 @@ import learningRoutes from './modules/auto-learning/learning.routes';
 // 🧠 AI ORCHESTRATOR
 import orchestratorRoutes from './modules/ai-orchestrator/orchestrator.routes';
 
+// ⚽ FOOTBALL
+import footballRoutes from './modules/football/football.routes';
+
 // 🧠 LOAD STRATEGIES
 import './modules/strategy-engine/strategies';
 
@@ -124,6 +127,9 @@ routes.use('/learning', learningRoutes);
 
 // 🧠 AI ORCHESTRATOR
 routes.use('/orchestrator', orchestratorRoutes);
+
+// ⚽ FOOTBALL
+routes.use('/football', footballRoutes);
 
 // ==========================================
 // 🚀 API

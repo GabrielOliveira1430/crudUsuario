@@ -1,5 +1,3 @@
-// src/modules/generator/generator.service.ts
-
 import {
   LearningMemory
 } from '../auto-learning/learning.memory';
@@ -23,6 +21,14 @@ import {
 import {
   FrequencyAnalysisEngine
 } from '../analytics/frequency-analysis.engine';
+
+import {
+  FootballProvider
+} from '../football/football.provider';
+
+import {
+  FootballAnalytics
+} from '../football/football.analytics';
 
 
 // ==========================================
@@ -239,6 +245,46 @@ export class GeneratorService {
     const results:
       GeneratedResult[] = [];
 
+
+    // ==========================================
+    // ⚽ FOOTBALL ANALYTICS
+    // ==========================================
+
+    let footballBoost = 0;
+
+    try {
+
+      const footballData =
+
+        await FootballProvider
+          .getLiveMatches();
+
+      if (footballData.success) {
+
+        const footballStats =
+
+          FootballAnalytics.analyze(
+            footballData.matches
+          );
+
+        footballBoost =
+
+          footballStats.length > 0
+            ? 5
+            : 0;
+
+        console.log(
+          '⚽ Football analytics ativo'
+        );
+      }
+
+    } catch (error) {
+
+      console.log(
+        '⚠️ Football analytics offline'
+      );
+    }
+
     const totalWeight =
 
       weights.hot +
@@ -409,11 +455,15 @@ export class GeneratorService {
 
             100,
 
-            confidenceData.confidence *
-
             (
-              pattern.score / 100
-            )
+
+              confidenceData.confidence *
+
+              (
+                pattern.score / 100
+              )
+
+            ) + footballBoost
           )
         );
 

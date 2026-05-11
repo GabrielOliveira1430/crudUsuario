@@ -1,52 +1,43 @@
-import {
-  Router
-} from 'express';
+import { Router } from 'express';
 
-import {
-  AnalyticsController
-} from './analytics.controller';
+import { FootballController } from './football.controller';
 
 const router = Router();
 
-
 // ==========================================
-// 🔥 ANALYTICS PRINCIPAL
-// ==========================================
-
-router.post(
-  '/analyze',
-  AnalyticsController.analyze
-);
-
-
-// ==========================================
-// 🔥 HOT DATABASE
+// ⚽ LIVE
 // ==========================================
 
 router.get(
-  '/hot',
-  AnalyticsController.hot
+  '/live',
+  FootballController.live.bind(FootballController)
 );
 
-
 // ==========================================
-// ❄️ COLD DATABASE
+// 📊 ANALYTICS
 // ==========================================
 
 router.get(
-  '/cold',
-  AnalyticsController.cold
+  '/analytics',
+  FootballController.analytics.bind(FootballController)
 );
 
-
 // ==========================================
-// 📦 SOURCE STATS
+// 🧠 PREDICTIONS
 // ==========================================
 
 router.get(
-  '/sources',
-  AnalyticsController.sources
+  '/predictions',
+  FootballController.predictions.bind(FootballController)
 );
 
+// ==========================================
+// 💰 ODDS
+// ==========================================
+
+router.get(
+  '/odds',
+  FootballController.odds.bind(FootballController)
+);
 
 export default router;

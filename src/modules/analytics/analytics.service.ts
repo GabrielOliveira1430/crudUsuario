@@ -192,4 +192,91 @@ export class AnalyticsService {
       coldNumbers
     };
   }
+
+
+  // ==========================================
+  // 📦 SOURCE STATS
+  // ==========================================
+
+  static async getSourceStats() {
+
+    const {
+      AnalyticsRepository
+    } = await import(
+      './analytics.repository'
+    );
+
+    const sources =
+
+      await AnalyticsRepository
+        .getSourceStats();
+
+    return {
+
+      success: true,
+
+      total:
+        sources.length,
+
+      sources
+    };
+  }
+
+
+  // ==========================================
+  // 🔥 DATABASE HOT
+  // ==========================================
+
+  static async getDatabaseHotNumbers() {
+
+    const {
+      AnalyticsRepository
+    } = await import(
+      './analytics.repository'
+    );
+
+    const numbers =
+
+      await AnalyticsRepository
+        .getHotNumbers();
+
+    return {
+
+      success: true,
+
+      total:
+        numbers.length,
+
+      numbers
+    };
+  }
+
+
+  // ==========================================
+  // ❄️ DATABASE COLD
+  // ==========================================
+
+  static async getDatabaseColdNumbers() {
+
+    const {
+      AnalyticsRepository
+    } = await import(
+      './analytics.repository'
+    );
+
+    const numbers =
+
+      await AnalyticsRepository
+        .getColdNumbers();
+
+    return {
+
+      success: true,
+
+      total:
+        numbers.length,
+
+      numbers
+    };
+  }
 }
