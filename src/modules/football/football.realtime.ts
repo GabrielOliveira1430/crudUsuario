@@ -14,8 +14,9 @@ import {
   FootballOddsEngine
 } from './football.odds.engine';
 
-import { broadcastFootball } from '../../shared/websocket/ws.server';
-
+import {
+  broadcastFootball
+} from '../../shared/websocket/ws.server';
 
 // ==========================================
 // ⚽ FOOTBALL REALTIME ENGINE
@@ -23,102 +24,271 @@ import { broadcastFootball } from '../../shared/websocket/ws.server';
 
 export class FootballRealtime {
 
-  static lastSnapshot: any = null;
+  private static started = false;
+
+  private static interval:
+    NodeJS.Timeout | null = null;
+
+  private static processing = false;
+
+  private static snapshot: any = null;
+
+  private static lastHash = '';
+
+  // ==========================================
+  // 🚀 START
+  // ==========================================
 
   static start() {
 
-    console.log('⚽ FootballRealtime iniciado');
+    if (this.started) {
 
-    setInterval(async () => {
+      console.log(
+        '⚠️ FootballRealtime já iniciado'
+      );
 
-      try {
+      return;
+    }
 
-        const result = await FootballProvider.getLiveMatches();
+    this.started = true;
 
-        if (!result.success) {
-          console.log('🔴 Falha futebol realtime');
-          return;
-        }
+    console.log(
+      '⚽ FootballRealtime iniciado'
+    );
 
-        const matches = result.matches || [];
+    this.update();
 
-        if (!matches.length) {
-          console.log('🟡 Nenhuma partida encontrada');
-          return;
-        }
-
-        // ==========================================
-        // 📊 ANALYTICS
-        // ==========================================
-
-        const analytics =
-          FootballAnalytics.analyze(matches);
-
-        // ==========================================
-        // 🧠 PREDICTIONS
-        // ==========================================
-
-        const predictions =
-          FootballPredictionEngine.predict(matches);
-
-        // ==========================================
-        // 💰 ODDS
-        // ==========================================
-
-        const odds =
-          FootballOddsEngine.calculate(matches);
-
-        // ==========================================
-        // 📸 SNAPSHOT
-        // ==========================================
-
-        const snapshot = {
-
-          success: true,
-
-          totalMatches: matches.length,
-
-          matches,
-
-          analytics,
-
-          topTeams: analytics.slice(0, 10),
-
-          hottestTeam: analytics[0] || null,
-
-          predictions,
-
-          totalPredictions: predictions.length,
-
-          bestPrediction: predictions[0] || null,
-
-          odds,
-
-          updatedAt: new Date().toISOString()
-        };
-
-        this.lastSnapshot = snapshot;
-
-        console.log(
-          '⚽ Snapshot atualizado:',
-          snapshot.totalMatches
-        );
-
-        // ==========================================
-        // 🚀 WEBSOCKET BROADCAST
-        // ==========================================
-
-        broadcastFootball(snapshot);
-
-      } catch (error) {
-
-        console.error('🔴 FootballRealtime erro:', error);
-      }
-
-    }, 30000);
+    this.interval = setInterval(
+      () => this.update(),
+      30000
+    );
   }
 
+  // ==========================================
+  // 🔄 UPDATE
+  // ==========================================
+
+  private static async update() {
+
+    if (this.processing) {
+
+      console.log(
+        '⚠️ FootballRealtime ocupado'
+      );
+
+      return;
+    }
+
+    this.processing = true;
+
+    try {
+
+      const result =
+        await FootballProvider.getLiveMatches();
+
+      if (!result.success) {
+
+        console.log(
+          '🔴 Falha provider futebol'
+        );
+
+        return;
+      }
+
+      // ==========================================
+      // ⚽ FILTER MATCHES
+      // ==========================================
+
+      const rawMatches =
+        result.matches || [];
+
+      const matches =
+        rawMatches.filter((match: any) => {
+
+          const status =
+            String(
+              match?.status || ''
+            ).toLowerCase();
+
+          return (
+            status.includes('live') ||
+            status.includes('1h') ||
+            status.includes('2h') ||
+            status.includes('ht') ||
+            status.includes('not started') ||
+            status.includes('ns') ||
+            status.includes('inplay')
+          );
+        });
+
+      if (!matches.length) {
+
+        console.log(
+          '🟡 Nenhuma partida LIVE encontrada'
+        );
+
+        return;
+      }
+
+      // ==========================================
+      // 📊 ANALYTICS
+      // ==========================================
+
+      const analytics =
+        FootballAnalytics.analyze(matches);
+
+      // ==========================================
+      // 🧠 PREDICTIONS
+      // ==========================================
+
+      const predictions =
+        FootballPredictionEngine
+          .predict(matches)
+          .sort(
+            (a: any, b: any) =>
+              b.confidence - a.confidence
+          );
+
+      // ==========================================
+      // 💰 ODDS
+      // ==========================================
+
+      const odds =
+        FootballOddsEngine
+          .calculate(matches)
+          .sort(
+            (a: any, b: any) =>
+              b.fairOdd - a.fairOdd
+          );
+
+      // ==========================================
+      // 📸 SNAPSHOT
+      // ==========================================
+
+      const snapshot = {
+
+        success: true,
+
+        totalMatches:
+          matches.length,
+
+        matches,
+
+        analytics,
+
+        topTeams:
+          analytics.slice(0, 10),
+
+        hottestTeam:
+          analytics[0] || null,
+
+        predictions,
+
+        totalPredictions:
+          predictions.length,
+
+        bestPrediction:
+          predictions[0] || null,
+
+        odds,
+
+        totalOdds:
+          odds.length,
+
+        updatedAt:
+          new Date().toISOString(),
+      };
+
+      // ==========================================
+      // 🔥 HASH
+      // ==========================================
+
+      const hash = JSON.stringify({
+
+        totalMatches:
+          snapshot.totalMatches,
+
+        firstMatch:
+          snapshot.matches?.[0],
+
+        lastMatch:
+          snapshot.matches?.[
+            snapshot.matches.length - 1
+          ],
+
+        bestPrediction:
+          snapshot.bestPrediction
+      });
+
+      // ==========================================
+      // 🚫 NO CHANGES
+      // ==========================================
+
+      if (hash === this.lastHash) {
+
+        console.log(
+          '⚽ Sem mudanças nas partidas'
+        );
+
+        return;
+      }
+
+      this.lastHash = hash;
+
+      this.snapshot = Object.freeze({
+        ...snapshot
+      });
+
+      console.log(
+        '⚽ Snapshot atualizado:',
+        snapshot.totalMatches
+      );
+
+      // ==========================================
+      // 🚀 BROADCAST
+      // ==========================================
+
+      broadcastFootball(snapshot);
+
+    } catch (error) {
+
+      console.error(
+        '🔴 FootballRealtime erro:',
+        error
+      );
+
+    } finally {
+
+      this.processing = false;
+    }
+  }
+
+  // ==========================================
+  // 📸 SNAPSHOT
+  // ==========================================
+
   static getSnapshot() {
-    return this.lastSnapshot;
+
+    return this.snapshot;
+  }
+
+  // ==========================================
+  // 🛑 STOP
+  // ==========================================
+
+  static stop() {
+
+    if (this.interval) {
+
+      clearInterval(this.interval);
+
+      this.interval = null;
+    }
+
+    this.started = false;
+
+    console.log(
+      '🛑 FootballRealtime parado'
+    );
   }
 }

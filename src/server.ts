@@ -16,7 +16,8 @@ import { FootballRealtime } from './modules/football/football.realtime';
 import { initWebSocket } from './shared/websocket/ws.server';
 import { OrchestratorRealtime } from './modules/ai-orchestrator/orchestrator.realtime';
 
-const PORT = Number(process.env.PORT) || 3000;
+const PORT =
+  Number(process.env.PORT) || 3000;
 
 // ==========================================
 // 🚀 SERVER START
@@ -26,19 +27,37 @@ async function startServer() {
 
   try {
 
-    console.log('🔥 REDIS_URL:', process.env.REDIS_URL || 'não configurado');
+    console.log(
+      '🔥 REDIS_URL:',
+      process.env.REDIS_URL || 'não configurado'
+    );
 
     // ==========================================
     // 🔴 REDIS
     // ==========================================
 
     if (redis) {
+
       try {
-        await redis.set('test', 'ok');
-        const value = await redis.get('test');
-        console.log('🟢 Redis conectado:', value);
+
+        await redis.set(
+          'test',
+          'ok'
+        );
+
+        const value =
+          await redis.get('test');
+
+        console.log(
+          '🟢 Redis conectado:',
+          value
+        );
+
       } catch {
-        console.log('🟡 Redis não conectado (continuando sem ele)');
+
+        console.log(
+          '🟡 Redis não conectado (continuando sem ele)'
+        );
       }
     }
 
@@ -47,59 +66,111 @@ async function startServer() {
     // ==========================================
 
     await LearningMemory.initialize();
-    console.log('🧠 LearningMemory inicializada');
 
-    console.log('⚖️ Source Weights:', SourceWeightEngine.getAll());
+    console.log(
+      '🧠 LearningMemory inicializada'
+    );
+
+    console.log(
+      '⚖️ Source Weights:',
+      SourceWeightEngine.getAll()
+    );
 
     // ==========================================
     // 📡 SYNC DATA
     // ==========================================
 
     await DrawSyncService.syncMegaSena();
-    console.log('🎰 Mega-Sena sincronizada');
+
+    console.log(
+      '🎰 Mega-Sena sincronizada'
+    );
+
+    // ==========================================
+    // 🚀 HTTP SERVER
+    // ==========================================
+
+    const server =
+      http.createServer(app);
+
+    // ==========================================
+    // ⚡ WEBSOCKET
+    // ==========================================
+
+    const wss =
+      initWebSocket(server);
+
+    console.log(
+      '⚡ WebSocket inicializado'
+    );
 
     // ==========================================
     // 🚀 REALTIME ENGINES
     // ==========================================
 
     HistoryRealtimeEngine.start();
-    console.log('📡 HistoryRealtimeEngine iniciado');
+
+    console.log(
+      '📡 HistoryRealtimeEngine iniciado'
+    );
 
     FootballRealtime.start();
-    console.log('⚽ FootballRealtime iniciado');
+
+    console.log(
+      '⚽ FootballRealtime iniciado'
+    );
 
     OrchestratorRealtime.start();
-    console.log('🧠 OrchestratorRealtime iniciado');
+
+    console.log(
+      '🧠 OrchestratorRealtime iniciado'
+    );
 
     // ==========================================
-    // 🚀 HTTP + WEBSOCKET SERVER (FIX IMPORTANTE)
+    // 🚀 SERVER LISTEN
     // ==========================================
 
-    const server = http.createServer(app);
+    server.listen(
+      PORT,
+      '0.0.0.0',
+      () => {
 
-    // ⚡ IMPORTANTE: init WS antes do listen
-    const wss = initWebSocket(server);
+        console.log(
+          `🚀 Servidor rodando na porta ${PORT}`
+        );
 
-    server.listen(PORT, '0.0.0.0', () => {
+        console.log(
+          `📘 Health: /health`
+        );
 
-      console.log(`🚀 Servidor rodando na porta ${PORT}`);
-      console.log(`📘 Health: /health`);
-      console.log(`⚡ WebSocket ativo: ws://localhost:${PORT}/ws`);
-      console.log(`🔌 WS clients conectados: ${wss?.clients?.size || 0}`);
-    });
+        console.log(
+          `⚡ WebSocket ativo: ws://localhost:${PORT}/ws`
+        );
+
+        console.log(
+          `🔌 WS clients conectados: ${wss?.clients?.size || 0}`
+        );
+      }
+    );
+
+    // ==========================================
+    // 🔌 DEBUG CLIENTS
+    // ==========================================
+
+    setInterval(() => {
+
+      console.log(
+        `🔌 WS clients ativos: ${wss?.clients?.size || 0}`
+      );
+
+    }, 15000);
 
   } catch (error) {
 
-    console.error('🔴 Erro ao iniciar servidor:', error);
-
-    const server = http.createServer(app);
-
-    const wss = initWebSocket(server);
-
-    server.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 Servidor rodando (fallback) na porta ${PORT}`);
-      console.log(`⚡ WebSocket ativo: ws://localhost:${PORT}/ws`);
-    });
+    console.error(
+      '🔴 Erro ao iniciar servidor:',
+      error
+    );
   }
 }
 
@@ -107,8 +178,13 @@ async function startServer() {
 // 🚀 AUTO START
 // ==========================================
 
-if (process.env.NODE_ENV !== 'test') {
+if (
+  process.env.NODE_ENV !== 'test'
+) {
+
   startServer();
 }
 
-export { startServer };
+export {
+  startServer
+};

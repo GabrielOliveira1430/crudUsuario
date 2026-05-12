@@ -1,9 +1,6 @@
-// src/modules/football/football.analytics.ts
-
 import {
   FootballMatch
 } from './football.provider';
-
 
 // ==========================================
 // ⚽ TEAM STATS
@@ -34,18 +31,17 @@ export type TeamStats = {
   cleanSheets: number;
 
   failedToScore: number;
+
+  averageGoals: number;
+
+  winRate: number;
 };
 
-
 // ==========================================
-// ⚽ FOOTBALL ANALYTICS
+// ⚽ ANALYTICS
 // ==========================================
 
 export class FootballAnalytics {
-
-  // ==========================================
-  // 📊 ANALYZE TEAMS
-  // ==========================================
 
   static analyze(
     matches: FootballMatch[]
@@ -54,9 +50,8 @@ export class FootballAnalytics {
     const map =
       new Map<string, TeamStats>();
 
-
     // ==========================================
-    // 🧠 CREATE TEAM
+    // CREATE TEAM
     // ==========================================
 
     function createTeam(
@@ -87,54 +82,65 @@ export class FootballAnalytics {
 
         cleanSheets: 0,
 
-        failedToScore: 0
+        failedToScore: 0,
+
+        averageGoals: 0,
+
+        winRate: 0
       };
     }
 
-
     // ==========================================
-    // 🔥 LOOP MATCHES
+    // LOOP
     // ==========================================
 
     for (const match of matches) {
 
-      const home = match.homeTeam;
-      const away = match.awayTeam;
+      const home =
+        match.homeTeam;
+
+      const away =
+        match.awayTeam;
 
       if (!map.has(home)) {
-        map.set(home, createTeam(home));
+        map.set(
+          home,
+          createTeam(home)
+        );
       }
 
       if (!map.has(away)) {
-        map.set(away, createTeam(away));
+        map.set(
+          away,
+          createTeam(away)
+        );
       }
 
-      const homeStats = map.get(home)!;
-      const awayStats = map.get(away)!;
+      const homeStats =
+        map.get(home)!;
 
+      const awayStats =
+        map.get(away)!;
+
+      const homeGoals =
+        Number(
+          match.homeScore ?? 0
+        );
+
+      const awayGoals =
+        Number(
+          match.awayScore ?? 0
+        );
 
       // ==========================================
-      // 🚫 IGNORA JOGOS SEM RESULTADO
-      // ==========================================
-
-      if (match.status !== 'finished') {
-        continue;
-      }
-
-      const homeGoals = Number(match.homeScore ?? 0);
-      const awayGoals = Number(match.awayScore ?? 0);
-
-
-      // ==========================================
-      // 📊 MATCHES
+      // MATCHES
       // ==========================================
 
       homeStats.matches++;
       awayStats.matches++;
 
-
       // ==========================================
-      // ⚽ GOALS
+      // GOALS
       // ==========================================
 
       homeStats.goals += homeGoals;
@@ -143,25 +149,32 @@ export class FootballAnalytics {
       awayStats.goals += awayGoals;
       awayStats.conceded += homeGoals;
 
-
       // ==========================================
-      // 🧤 CLEAN SHEETS
-      // ==========================================
-
-      if (awayGoals === 0) homeStats.cleanSheets++;
-      if (homeGoals === 0) awayStats.cleanSheets++;
-
-
-      // ==========================================
-      // 🚫 FAILED TO SCORE
+      // CLEAN SHEETS
       // ==========================================
 
-      if (homeGoals === 0) homeStats.failedToScore++;
-      if (awayGoals === 0) awayStats.failedToScore++;
+      if (awayGoals === 0) {
+        homeStats.cleanSheets++;
+      }
 
+      if (homeGoals === 0) {
+        awayStats.cleanSheets++;
+      }
 
       // ==========================================
-      // 🏆 RESULTADO
+      // FAILED TO SCORE
+      // ==========================================
+
+      if (homeGoals === 0) {
+        homeStats.failedToScore++;
+      }
+
+      if (awayGoals === 0) {
+        awayStats.failedToScore++;
+      }
+
+      // ==========================================
+      // RESULT
       // ==========================================
 
       if (homeGoals > awayGoals) {
@@ -190,44 +203,76 @@ export class FootballAnalytics {
       }
     }
 
-
     // ==========================================
-    // 📈 FINALIZA ESTATÍSTICAS
+    // FINALIZE
     // ==========================================
 
     const result =
       Array.from(map.values());
 
-
     result.forEach(team => {
 
       team.goalDifference =
-        team.goals - team.conceded;
+
+        team.goals -
+        team.conceded;
 
       team.performance = Number(
+
         (
-          ((team.wins * 3 + team.draws) /
-            Math.max(1, team.matches * 3)
+          (
+            (team.wins * 3 + team.draws)
+            /
+            Math.max(
+              1,
+              team.matches * 3
+            )
           ) * 100
         ).toFixed(2)
       );
 
-      // últimos 5 jogos
-      team.form = team.form.slice(-5);
+      team.averageGoals = Number(
+
+        (
+          team.goals /
+          Math.max(1, team.matches)
+        ).toFixed(2)
+      );
+
+      team.winRate = Number(
+
+        (
+          (team.wins /
+          Math.max(1, team.matches))
+          * 100
+        ).toFixed(2)
+      );
+
+      team.form =
+        team.form.slice(-5);
     });
 
-
     // ==========================================
-    // 🏆 ORDERNAR
+    // SORT
     // ==========================================
 
     return result.sort((a, b) => {
 
-      if (b.performance !== a.performance) {
-        return b.performance - a.performance;
+      if (
+        b.performance !==
+        a.performance
+      ) {
+
+        return (
+          b.performance -
+          a.performance
+        );
       }
 
-      return b.goalDifference - a.goalDifference;
+      return (
+        b.goalDifference -
+        a.goalDifference
+      );
     });
   }
 }

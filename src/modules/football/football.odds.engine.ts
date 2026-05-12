@@ -1,5 +1,3 @@
-// src/modules/football/football.odds.engine.ts
-
 import {
   FootballMatch
 } from './football.provider';
@@ -11,7 +9,6 @@ import {
   FootballPredictionEngine
 
 } from './football.prediction.engine';
-
 
 // ==========================================
 // ⚽ ODDS RESULT
@@ -31,9 +28,10 @@ export type OddsResult = {
 
   impliedProbability: number;
 
+  edge: number;
+
   valueBet: boolean;
 };
-
 
 // ==========================================
 // ⚽ ODDS ENGINE
@@ -41,9 +39,8 @@ export type OddsResult = {
 
 export class FootballOddsEngine {
 
-
   // ==========================================
-  // 📊 SINGLE ODD
+  // 📊 SINGLE
   // ==========================================
 
   private static calculateSingle(
@@ -61,16 +58,29 @@ export class FootballOddsEngine {
 
     const fairOdd =
 
-      100 / probability;
+      Number(
+        (100 / probability)
+          .toFixed(2)
+      );
 
     const impliedProbability =
 
-      (1 / fairOdd) * 100;
+      Number(
+        ((1 / fairOdd) * 100)
+          .toFixed(2)
+      );
+
+    const edge = Number(
+
+      (
+        probability -
+        impliedProbability
+      ).toFixed(2)
+    );
 
     const valueBet =
 
-      probability >
-      impliedProbability;
+      edge > 5;
 
     return {
 
@@ -88,23 +98,18 @@ export class FootballOddsEngine {
           probability.toFixed(2)
         ),
 
-      fairOdd:
-        Number(
-          fairOdd.toFixed(2)
-        ),
+      fairOdd,
 
-      impliedProbability:
-        Number(
-          impliedProbability.toFixed(2)
-        ),
+      impliedProbability,
+
+      edge,
 
       valueBet
     };
   }
 
-
   // ==========================================
-  // 🚀 CALCULATE ALL
+  // 🚀 CALCULATE
   // ==========================================
 
   static calculate(
@@ -116,13 +121,18 @@ export class FootballOddsEngine {
       FootballPredictionEngine
         .predict(matches);
 
-    return predictions.map(
+    return predictions
 
-      prediction =>
+      .map(prediction =>
 
         this.calculateSingle(
           prediction
         )
-    );
+      )
+
+      .sort(
+        (a, b) =>
+          b.edge - a.edge
+      );
   }
 }
