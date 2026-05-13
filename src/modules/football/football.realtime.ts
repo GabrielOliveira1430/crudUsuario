@@ -1,3 +1,5 @@
+// src/modules/football/football.realtime.ts
+
 import {
   FootballProvider
 } from './football.provider';
@@ -13,6 +15,14 @@ import {
 import {
   FootballOddsEngine
 } from './football.odds.engine';
+
+import {
+  FormEngine
+} from '../../modules/football-ai/engines/form.engine';
+
+import {
+  ValueBetEngine
+} from '../../modules/football-ai/engines/value-bet.engine';
 
 import {
   broadcastFootball
@@ -83,6 +93,10 @@ export class FootballRealtime {
 
     try {
 
+      // ==========================================
+      // ⚽ PROVIDER
+      // ==========================================
+
       const result =
         await FootballProvider.getLiveMatches();
 
@@ -135,7 +149,27 @@ export class FootballRealtime {
       // ==========================================
 
       const analytics =
-        FootballAnalytics.analyze(matches);
+        FootballAnalytics.analyze(
+          matches
+        );
+
+      // ==========================================
+      // 🧠 FORM ENGINE
+      // ==========================================
+
+      try {
+
+        FormEngine.update(
+          analytics
+        );
+
+      } catch (error) {
+
+        console.error(
+          '🔴 FormEngine erro:',
+          error
+        );
+      }
 
       // ==========================================
       // 🧠 PREDICTIONS
@@ -147,6 +181,20 @@ export class FootballRealtime {
           .sort(
             (a: any, b: any) =>
               b.confidence - a.confidence
+          );
+
+      // ==========================================
+      // 💰 VALUE BETS
+      // ==========================================
+
+      const valueBets =
+        ValueBetEngine
+          .analyzeMany(
+            predictions
+          )
+          .sort(
+            (a, b) =>
+              b.edge - a.edge
           );
 
       // ==========================================
@@ -162,6 +210,18 @@ export class FootballRealtime {
           );
 
       // ==========================================
+      // 🔥 TOP VALUES
+      // ==========================================
+
+      const topValueBets =
+        valueBets
+          .filter(
+            (item) =>
+              item.valueBet
+          )
+          .slice(0, 10);
+
+      // ==========================================
       // 📸 SNAPSHOT
       // ==========================================
 
@@ -174,6 +234,10 @@ export class FootballRealtime {
 
         matches,
 
+        // ==========================================
+        // 📊 ANALYTICS
+        // ==========================================
+
         analytics,
 
         topTeams:
@@ -181,6 +245,10 @@ export class FootballRealtime {
 
         hottestTeam:
           analytics[0] || null,
+
+        // ==========================================
+        // 🧠 PREDICTIONS
+        // ==========================================
 
         predictions,
 
@@ -190,10 +258,32 @@ export class FootballRealtime {
         bestPrediction:
           predictions[0] || null,
 
+        // ==========================================
+        // 💰 ODDS
+        // ==========================================
+
         odds,
 
         totalOdds:
           odds.length,
+
+        // ==========================================
+        // 💎 VALUE BETS
+        // ==========================================
+
+        valueBets,
+
+        topValueBets,
+
+        bestValueBet:
+          topValueBets[0] || null,
+
+        totalValueBets:
+          topValueBets.length,
+
+        // ==========================================
+        // 🕒 META
+        // ==========================================
 
         updatedAt:
           new Date().toISOString(),
@@ -203,22 +293,26 @@ export class FootballRealtime {
       // 🔥 HASH
       // ==========================================
 
-      const hash = JSON.stringify({
+      const hash =
+        JSON.stringify({
 
-        totalMatches:
-          snapshot.totalMatches,
+          totalMatches:
+            snapshot.totalMatches,
 
-        firstMatch:
-          snapshot.matches?.[0],
+          firstMatch:
+            snapshot.matches?.[0],
 
-        lastMatch:
-          snapshot.matches?.[
-            snapshot.matches.length - 1
-          ],
+          lastMatch:
+            snapshot.matches?.[
+              snapshot.matches.length - 1
+            ],
 
-        bestPrediction:
-          snapshot.bestPrediction
-      });
+          bestPrediction:
+            snapshot.bestPrediction,
+
+          bestValueBet:
+            snapshot.bestValueBet
+        });
 
       // ==========================================
       // 🚫 NO CHANGES
@@ -233,22 +327,34 @@ export class FootballRealtime {
         return;
       }
 
+      // ==========================================
+      // 💾 SAVE SNAPSHOT
+      // ==========================================
+
       this.lastHash = hash;
 
-      this.snapshot = Object.freeze({
-        ...snapshot
-      });
+      this.snapshot =
+        Object.freeze({
+          ...snapshot
+        });
 
       console.log(
         '⚽ Snapshot atualizado:',
         snapshot.totalMatches
       );
 
+      console.log(
+        '💰 Value Bets:',
+        snapshot.totalValueBets
+      );
+
       // ==========================================
       // 🚀 BROADCAST
       // ==========================================
 
-      broadcastFootball(snapshot);
+      broadcastFootball(
+        snapshot
+      );
 
     } catch (error) {
 
@@ -280,7 +386,9 @@ export class FootballRealtime {
 
     if (this.interval) {
 
-      clearInterval(this.interval);
+      clearInterval(
+        this.interval
+      );
 
       this.interval = null;
     }

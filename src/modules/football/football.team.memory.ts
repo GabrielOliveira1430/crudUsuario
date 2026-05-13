@@ -1,8 +1,8 @@
 // src/modules/football/football.team.memory.ts
 
 import type {
-  TeamFormAnalysis
-} from './football.form.engine';
+  TeamForm
+} from '../football-ai/engines/form.engine';
 
 // ======================================
 // TEAM MEMORY
@@ -26,9 +26,14 @@ export type TeamMemory = {
 
   averageGoalsConceded: number;
 
+  cleanSheets: number;
+
+  failedToScore: number;
+
+  recentForm: string[];
+
   updatedAt: number;
 };
-
 
 // ======================================
 // MEMORY ENGINE
@@ -39,13 +44,12 @@ class FootballTeamMemory {
   private memory =
     new Map<string, TeamMemory>();
 
-
   // ======================================
   // SAVE
   // ======================================
 
   save(
-    analysis: TeamFormAnalysis
+    analysis: TeamForm
   ) {
 
     this.memory.set(
@@ -71,10 +75,19 @@ class FootballTeamMemory {
           analysis.momentum,
 
         averageGoalsScored:
-          analysis.averageGoalsScored,
+          analysis.averageGoals,
 
         averageGoalsConceded:
-          analysis.averageGoalsConceded,
+          analysis.averageConceded,
+
+        cleanSheets:
+          analysis.cleanSheets,
+
+        failedToScore:
+          analysis.failedToScore,
+
+        recentForm:
+          analysis.recentForm,
 
         updatedAt:
           Date.now(),
@@ -86,6 +99,23 @@ class FootballTeamMemory {
     );
   }
 
+  // ======================================
+  // SAVE MANY
+  // ======================================
+
+  saveMany(
+    analyses: TeamForm[]
+  ) {
+
+    for (const analysis of analyses) {
+
+      this.save(analysis);
+    }
+
+    console.log(
+      `🧠 Team memory batch updated: ${analyses.length} teams`
+    );
+  }
 
   // ======================================
   // GET
@@ -101,6 +131,16 @@ class FootballTeamMemory {
     );
   }
 
+  // ======================================
+  // HAS
+  // ======================================
+
+  has(
+    team: string
+  ) {
+
+    return this.memory.has(team);
+  }
 
   // ======================================
   // GET ALL
@@ -112,7 +152,6 @@ class FootballTeamMemory {
       this.memory.values()
     );
   }
-
 
   // ======================================
   // TOP OFFENSIVE
@@ -133,7 +172,6 @@ class FootballTeamMemory {
       .slice(0, limit);
   }
 
-
   // ======================================
   // TOP DEFENSIVE
   // ======================================
@@ -152,7 +190,6 @@ class FootballTeamMemory {
 
       .slice(0, limit);
   }
-
 
   // ======================================
   // TOP MOMENTUM
@@ -173,7 +210,6 @@ class FootballTeamMemory {
       .slice(0, limit);
   }
 
-
   // ======================================
   // WEAK DEFENSE
   // ======================================
@@ -192,8 +228,45 @@ class FootballTeamMemory {
 
       .slice(0, limit);
   }
-}
 
+  // ======================================
+  // TOP FORM
+  // ======================================
+
+  getTopForm(
+    limit = 10
+  ) {
+
+    return this.getAll()
+
+      .sort(
+        (a, b) =>
+          (
+            b.formScore +
+            b.momentum
+          ) -
+          (
+            a.formScore +
+            a.momentum
+          )
+      )
+
+      .slice(0, limit);
+  }
+
+  // ======================================
+  // CLEAR
+  // ======================================
+
+  clear() {
+
+    this.memory.clear();
+
+    console.log(
+      '🧹 FootballTeamMemory limpo'
+    );
+  }
+}
 
 // ======================================
 // SINGLETON

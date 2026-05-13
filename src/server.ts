@@ -16,175 +16,108 @@ import { FootballRealtime } from './modules/football/football.realtime';
 import { initWebSocket } from './shared/websocket/ws.server';
 import { OrchestratorRealtime } from './modules/ai-orchestrator/orchestrator.realtime';
 
-const PORT =
-  Number(process.env.PORT) || 3000;
+// 🚨 ALERT STREAM (NOVA CAMADA PRODUÇÃO)
+import { AlertStreamBootstrap } from './bootstrap/alert-stream.bootstrap';
+
+const PORT = Number(process.env.PORT) || 3000;
 
 // ==========================================
 // 🚀 SERVER START
 // ==========================================
 
 async function startServer() {
-
   try {
-
-    console.log(
-      '🔥 REDIS_URL:',
-      process.env.REDIS_URL || 'não configurado'
-    );
+    console.log('🔥 REDIS_URL:', process.env.REDIS_URL || 'não configurado');
 
     // ==========================================
     // 🔴 REDIS
     // ==========================================
-
     if (redis) {
-
       try {
+        await redis.set('test', 'ok');
+        const value = await redis.get('test');
 
-        await redis.set(
-          'test',
-          'ok'
-        );
-
-        const value =
-          await redis.get('test');
-
-        console.log(
-          '🟢 Redis conectado:',
-          value
-        );
-
+        console.log('🟢 Redis conectado:', value);
       } catch {
-
-        console.log(
-          '🟡 Redis não conectado (continuando sem ele)'
-        );
+        console.log('🟡 Redis não conectado (continuando sem ele)');
       }
     }
 
     // ==========================================
     // 🧠 AI MEMORY
     // ==========================================
-
     await LearningMemory.initialize();
+    console.log('🧠 LearningMemory inicializada');
 
-    console.log(
-      '🧠 LearningMemory inicializada'
-    );
-
-    console.log(
-      '⚖️ Source Weights:',
-      SourceWeightEngine.getAll()
-    );
+    console.log('⚖️ Source Weights:', SourceWeightEngine.getAll());
 
     // ==========================================
     // 📡 SYNC DATA
     // ==========================================
-
     await DrawSyncService.syncMegaSena();
-
-    console.log(
-      '🎰 Mega-Sena sincronizada'
-    );
+    console.log('🎰 Mega-Sena sincronizada');
 
     // ==========================================
     // 🚀 HTTP SERVER
     // ==========================================
-
-    const server =
-      http.createServer(app);
+    const server = http.createServer(app);
 
     // ==========================================
     // ⚡ WEBSOCKET
     // ==========================================
+    const wss = initWebSocket(server);
+    console.log('⚡ WebSocket inicializado');
 
-    const wss =
-      initWebSocket(server);
+    // ==========================================
+    // 🚨 ALERT STREAM (PRODUÇÃO REAL CORE)
+    // ==========================================
+    await AlertStreamBootstrap.start({
+      websocket: wss,
+      mode: process.env.NODE_ENV === 'production' ? 'PROD' : 'DEV',
+    });
 
-    console.log(
-      '⚡ WebSocket inicializado'
-    );
+    console.log('🚨 AlertStreamBootstrap iniciado');
 
     // ==========================================
     // 🚀 REALTIME ENGINES
     // ==========================================
-
     HistoryRealtimeEngine.start();
-
-    console.log(
-      '📡 HistoryRealtimeEngine iniciado'
-    );
+    console.log('📡 HistoryRealtimeEngine iniciado');
 
     FootballRealtime.start();
-
-    console.log(
-      '⚽ FootballRealtime iniciado'
-    );
+    console.log('⚽ FootballRealtime iniciado');
 
     OrchestratorRealtime.start();
-
-    console.log(
-      '🧠 OrchestratorRealtime iniciado'
-    );
+    console.log('🧠 OrchestratorRealtime iniciado');
 
     // ==========================================
     // 🚀 SERVER LISTEN
     // ==========================================
-
-    server.listen(
-      PORT,
-      '0.0.0.0',
-      () => {
-
-        console.log(
-          `🚀 Servidor rodando na porta ${PORT}`
-        );
-
-        console.log(
-          `📘 Health: /health`
-        );
-
-        console.log(
-          `⚡ WebSocket ativo: ws://localhost:${PORT}/ws`
-        );
-
-        console.log(
-          `🔌 WS clients conectados: ${wss?.clients?.size || 0}`
-        );
-      }
-    );
+    server.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Servidor rodando na porta ${PORT}`);
+      console.log(`📘 Health: /health`);
+      console.log(`⚡ WebSocket ativo: ws://localhost:${PORT}/ws`);
+      console.log(`🔌 WS clients conectados: ${wss?.clients?.size || 0}`);
+      console.log(`🔥 MODE: ${process.env.NODE_ENV || 'development'}`);
+    });
 
     // ==========================================
     // 🔌 DEBUG CLIENTS
     // ==========================================
-
     setInterval(() => {
-
-      console.log(
-        `🔌 WS clients ativos: ${wss?.clients?.size || 0}`
-      );
-
+      console.log(`🔌 WS clients ativos: ${wss?.clients?.size || 0}`);
     }, 15000);
 
   } catch (error) {
-
-    console.error(
-      '🔴 Erro ao iniciar servidor:',
-      error
-    );
+    console.error('🔴 Erro ao iniciar servidor:', error);
   }
 }
 
 // ==========================================
 // 🚀 AUTO START
 // ==========================================
-
-if (
-  process.env.NODE_ENV !== 'test'
-) {
-
+if (process.env.NODE_ENV !== 'test') {
   startServer();
 }
 
-export {
-  startServer
-};
+export { startServer };

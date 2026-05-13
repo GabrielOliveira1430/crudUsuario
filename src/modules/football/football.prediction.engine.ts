@@ -1,8 +1,14 @@
+// src/modules/football/football.prediction.engine.ts
+
 import { footballTeamMemory } from './football.team.memory';
+
+import {
+  LivePressureEngine
+} from '../../modules/football-ai/engines/live-pressure.engine';
 
 import type {
   PressureAnalysis
-} from './football.live-pressure.engine';
+} from '../../modules/football-ai/engines/live-pressure.engine';
 
 import type {
   FootballMatch
@@ -53,6 +59,8 @@ export type FootballPrediction = {
     | 'LOW_CONFIDENCE';
 
   reasons: string[];
+
+  pressure?: PressureAnalysis;
 };
 
 // ======================================
@@ -66,17 +74,26 @@ export class FootballPredictionEngine {
   // ======================================
 
   static single(
-    input: FootballPredictionInput
+    match: FootballMatch
   ): FootballPrediction {
 
     const home =
       footballTeamMemory.get(
-        input.homeTeam
+        match.homeTeam
       );
 
     const away =
       footballTeamMemory.get(
-        input.awayTeam
+        match.awayTeam
+      );
+
+    // ======================================
+    // 🧠 LIVE PRESSURE
+    // ======================================
+
+    const pressure =
+      LivePressureEngine.analyze(
+        match
       );
 
     // ======================================
@@ -93,20 +110,21 @@ export class FootballPredictionEngine {
         );
 
       const homeAdvantage =
-        Math.random() > 0.5;
+        pressure.homePressure >
+        pressure.awayPressure;
 
       const winner =
         homeAdvantage
-          ? input.homeTeam
-          : input.awayTeam;
+          ? match.homeTeam
+          : match.awayTeam;
 
       return {
 
         homeTeam:
-          input.homeTeam,
+          match.homeTeam,
 
         awayTeam:
-          input.awayTeam,
+          match.awayTeam,
 
         winner,
 
@@ -147,14 +165,17 @@ export class FootballPredictionEngine {
             : 'RISKY BET',
 
         market:
-          randomConfidence >= 70
-            ? 'HOME_WIN'
+          pressure.goalProbability >= 75
+            ? 'OVER_2_5'
             : 'OVER_1_5',
 
         reasons: [
           'Fallback AI prediction',
-          'Live momentum analysis',
+          'Live pressure analysis',
+          ...pressure.reasons,
         ],
+
+        pressure,
       };
     }
 
@@ -167,11 +188,19 @@ export class FootballPredictionEngine {
 
     const reasons: string[] = [];
 
+    // ======================================
+    // OFFENSE
+    // ======================================
+
     homeScore +=
       home.offensiveStrength || 0;
 
     awayScore +=
       away.offensiveStrength || 0;
+
+    // ======================================
+    // DEFENSE
+    // ======================================
 
     homeScore +=
       home.defensiveStrength || 0;
@@ -179,11 +208,19 @@ export class FootballPredictionEngine {
     awayScore +=
       away.defensiveStrength || 0;
 
+    // ======================================
+    // FORM
+    // ======================================
+
     homeScore +=
       home.formScore || 0;
 
     awayScore +=
       away.formScore || 0;
+
+    // ======================================
+    // MOMENTUM
+    // ======================================
 
     homeScore +=
       (home.momentum || 0) * 2;
@@ -191,17 +228,68 @@ export class FootballPredictionEngine {
     awayScore +=
       (away.momentum || 0) * 2;
 
+    // ======================================
+    // LIVE PRESSURE
+    // ======================================
+
+    homeScore +=
+      pressure.homePressure * 1.5;
+
+    awayScore +=
+      pressure.awayPressure * 1.5;
+
+    // ======================================
+    // REASONS
+    // ======================================
+
+    if (
+      pressure.dominantTeam ===
+      match.homeTeam
+    ) {
+
+      reasons.push(
+        `${match.homeTeam} domina a partida`
+      );
+    }
+
+    if (
+      pressure.dominantTeam ===
+      match.awayTeam
+    ) {
+
+      reasons.push(
+        `${match.awayTeam} domina a partida`
+      );
+    }
+
+    if (
+      pressure.goalProbability >= 75
+    ) {
+
+      reasons.push(
+        'Alta chance de gol'
+      );
+    }
+
+    // ======================================
+    // DIFFERENCE
+    // ======================================
+
     const difference =
       Math.abs(
         homeScore - awayScore
       );
+
+    // ======================================
+    // PREDICTION
+    // ======================================
 
     let prediction:
       | 'HOME'
       | 'AWAY'
       | 'DRAW';
 
-    if (difference < 10) {
+    if (difference < 15) {
 
       prediction = 'DRAW';
 
@@ -213,22 +301,38 @@ export class FootballPredictionEngine {
           : 'AWAY';
     }
 
+    // ======================================
+    // WINNER
+    // ======================================
+
     const winner =
       prediction === 'HOME'
-        ? input.homeTeam
+        ? match.homeTeam
         : prediction === 'AWAY'
-        ? input.awayTeam
+        ? match.awayTeam
         : 'DRAW';
+
+    // ======================================
+    // CONFIDENCE
+    // ======================================
 
     const confidence =
       Math.min(
         95,
+
         Number(
           (
-            60 + difference / 2
+            60 +
+            (
+              difference / 2
+            )
           ).toFixed(2)
         )
       );
+
+    // ======================================
+    // FAIR ODD
+    // ======================================
 
     const fairOdd =
       Number(
@@ -237,12 +341,20 @@ export class FootballPredictionEngine {
         ).toFixed(2)
       );
 
+    // ======================================
+    // RISK
+    // ======================================
+
     const risk =
       Number(
         (
           100 - confidence
         ).toFixed(2)
       );
+
+    // ======================================
+    // EDGE
+    // ======================================
 
     const edge =
       Number(
@@ -251,13 +363,51 @@ export class FootballPredictionEngine {
         ).toFixed(2)
       );
 
+    // ======================================
+    // MARKET
+    // ======================================
+
+    let market:
+      | 'HOME_WIN'
+      | 'AWAY_WIN'
+      | 'DRAW'
+      | 'OVER_1_5'
+      | 'OVER_2_5'
+      | 'LOW_CONFIDENCE';
+
+    if (
+      pressure.goalProbability >= 80
+    ) {
+
+      market = 'OVER_2_5';
+
+    } else if (
+      pressure.goalProbability >= 65
+    ) {
+
+      market = 'OVER_1_5';
+
+    } else {
+
+      market =
+        prediction === 'HOME'
+          ? 'HOME_WIN'
+          : prediction === 'AWAY'
+          ? 'AWAY_WIN'
+          : 'DRAW';
+    }
+
+    // ======================================
+    // RESULT
+    // ======================================
+
     return {
 
       homeTeam:
-        input.homeTeam,
+        match.homeTeam,
 
       awayTeam:
-        input.awayTeam,
+        match.awayTeam,
 
       winner,
 
@@ -278,14 +428,14 @@ export class FootballPredictionEngine {
           ? 'GOOD BET'
           : 'RISKY BET',
 
-      market:
-        prediction === 'HOME'
-          ? 'HOME_WIN'
-          : prediction === 'AWAY'
-          ? 'AWAY_WIN'
-          : 'DRAW',
+      market,
 
-      reasons,
+      reasons: [
+        ...reasons,
+        ...pressure.reasons,
+      ],
+
+      pressure,
     };
   }
 
@@ -297,17 +447,8 @@ export class FootballPredictionEngine {
     matches: FootballMatch[]
   ): FootballPrediction[] {
 
-    return matches.map(
-      (match) =>
-
-        this.single({
-
-          homeTeam:
-            match.homeTeam,
-
-          awayTeam:
-            match.awayTeam,
-        })
+    return matches.map(match =>
+      this.single(match)
     );
   }
 }
