@@ -14,6 +14,30 @@ import type {
   FootballMatch
 } from './football.provider';
 
+import {
+  weightOptimizer
+} from '../football-ai/learning/weight.optimizer';
+
+import {
+  ConfidenceCalibrator
+} from '../football-ai/learning/confidence.calibrator';
+
+import {
+  MatchDNAEngine
+} from '../football-ai/dna/match-dna.engine';
+
+import {
+  CollapseDetector
+} from '../football-ai/dna/collapse-detector';
+
+import {
+  ComebackEngine
+} from '../football-ai/dna/comeback-engine';
+
+import {
+  ChaosIndexEngine
+} from '../football-ai/dna/chaos-index.engine';
+
 // ======================================
 // TYPES
 // ======================================
@@ -61,6 +85,8 @@ export type FootballPrediction = {
   reasons: string[];
 
   pressure?: PressureAnalysis;
+
+  timeline?: any;
 };
 
 // ======================================
@@ -97,17 +123,67 @@ export class FootballPredictionEngine {
       );
 
     // ======================================
+    // 🧠 DYNAMIC WEIGHTS
+    // ======================================
+
+    const weights =
+      weightOptimizer.getWeights();
+
+    // ======================================
+    // 🧬 MATCH DNA
+    // ======================================
+
+    const {
+      homeDNA,
+      awayDNA
+    } = MatchDNAEngine.build(
+      match
+    );
+
+    const homeCollapse =
+      CollapseDetector.analyze(
+        homeDNA
+      );
+
+    const awayCollapse =
+      CollapseDetector.analyze(
+        awayDNA
+      );
+
+    const homeComeback =
+      ComebackEngine.analyze(
+        homeDNA
+      );
+
+    const awayComeback =
+      ComebackEngine.analyze(
+        awayDNA
+      );
+
+    const chaos =
+      ChaosIndexEngine.analyze(
+        homeDNA,
+        awayDNA
+      );
+
+    // ======================================
     // 🛟 FALLBACK MODE
     // ======================================
 
     if (!home || !away) {
 
-      const randomConfidence =
+      let randomConfidence =
         Number(
           (
             55 + Math.random() * 25
           ).toFixed(2)
         );
+
+      randomConfidence =
+        ConfidenceCalibrator
+          .calibrate(
+            randomConfidence
+          );
 
       const homeAdvantage =
         pressure.homePressure >
@@ -117,6 +193,82 @@ export class FootballPredictionEngine {
         homeAdvantage
           ? match.homeTeam
           : match.awayTeam;
+
+      let market:
+        | 'HOME_WIN'
+        | 'AWAY_WIN'
+        | 'DRAW'
+        | 'OVER_1_5'
+        | 'OVER_2_5'
+        | 'LOW_CONFIDENCE';
+
+      market =
+        pressure.goalProbability >= 75
+          ? 'OVER_2_5'
+          : 'OVER_1_5';
+
+      const reasons = [
+        'Fallback AI prediction',
+        'Live pressure analysis',
+        ...pressure.reasons,
+      ];
+
+      // ======================================
+      // 🔥 CHAOS DETECTION
+      // ======================================
+
+      if (chaos.insaneMatch) {
+
+        reasons.push(
+          'Partida extremamente caótica'
+        );
+
+        market = 'OVER_2_5';
+      }
+
+      // ======================================
+      // 💥 COLLAPSE
+      // ======================================
+
+      if (
+        awayCollapse.dangerous
+      ) {
+
+        reasons.push(
+          `${match.awayTeam} pode colapsar`
+        );
+      }
+
+      if (
+        homeCollapse.dangerous
+      ) {
+
+        reasons.push(
+          `${match.homeTeam} pode colapsar`
+        );
+      }
+
+      // ======================================
+      // 🔄 COMEBACK
+      // ======================================
+
+      if (
+        homeComeback.eliteComeback
+      ) {
+
+        reasons.push(
+          `${match.homeTeam} possui forte tendência de reação`
+        );
+      }
+
+      if (
+        awayComeback.eliteComeback
+      ) {
+
+        reasons.push(
+          `${match.awayTeam} possui forte tendência de reação`
+        );
+      }
 
       return {
 
@@ -164,16 +316,9 @@ export class FootballPredictionEngine {
             ? 'GOOD BET'
             : 'RISKY BET',
 
-        market:
-          pressure.goalProbability >= 75
-            ? 'OVER_2_5'
-            : 'OVER_1_5',
+        market,
 
-        reasons: [
-          'Fallback AI prediction',
-          'Live pressure analysis',
-          ...pressure.reasons,
-        ],
+        reasons,
 
         pressure,
       };
@@ -193,50 +338,134 @@ export class FootballPredictionEngine {
     // ======================================
 
     homeScore +=
-      home.offensiveStrength || 0;
+      (home.offensiveStrength || 0) *
+      weights.offense;
 
     awayScore +=
-      away.offensiveStrength || 0;
+      (away.offensiveStrength || 0) *
+      weights.offense;
 
     // ======================================
     // DEFENSE
     // ======================================
 
     homeScore +=
-      home.defensiveStrength || 0;
+      (home.defensiveStrength || 0) *
+      weights.defense;
 
     awayScore +=
-      away.defensiveStrength || 0;
+      (away.defensiveStrength || 0) *
+      weights.defense;
 
     // ======================================
     // FORM
     // ======================================
 
     homeScore +=
-      home.formScore || 0;
+      (home.formScore || 0) *
+      weights.form;
 
     awayScore +=
-      away.formScore || 0;
+      (away.formScore || 0) *
+      weights.form;
 
     // ======================================
     // MOMENTUM
     // ======================================
 
     homeScore +=
-      (home.momentum || 0) * 2;
+      (home.momentum || 0) *
+      weights.momentum;
 
     awayScore +=
-      (away.momentum || 0) * 2;
+      (away.momentum || 0) *
+      weights.momentum;
 
     // ======================================
     // LIVE PRESSURE
     // ======================================
 
     homeScore +=
-      pressure.homePressure * 1.5;
+      pressure.homePressure *
+      weights.pressure;
 
     awayScore +=
-      pressure.awayPressure * 1.5;
+      pressure.awayPressure *
+      weights.pressure;
+
+    // ======================================
+    // 🧬 DNA BOOSTS
+    // ======================================
+
+    homeScore +=
+      homeDNA.offensiveDNA * 0.4;
+
+    awayScore +=
+      awayDNA.offensiveDNA * 0.4;
+
+    homeScore +=
+      homeDNA.emotionalStability * 0.25;
+
+    awayScore +=
+      awayDNA.emotionalStability * 0.25;
+
+    homeScore +=
+      homeDNA.dominance * 0.3;
+
+    awayScore +=
+      awayDNA.dominance * 0.3;
+
+    // ======================================
+    // 💥 COLLAPSE DETECTION
+    // ======================================
+
+    if (
+      awayCollapse.dangerous
+    ) {
+
+      reasons.push(
+        `${match.awayTeam} pode colapsar`
+      );
+
+      homeScore += 15;
+    }
+
+    if (
+      homeCollapse.dangerous
+    ) {
+
+      reasons.push(
+        `${match.homeTeam} pode colapsar`
+      );
+
+      awayScore += 15;
+    }
+
+    // ======================================
+    // 🔄 COMEBACK ENGINE
+    // ======================================
+
+    if (
+      homeComeback.eliteComeback
+    ) {
+
+      reasons.push(
+        `${match.homeTeam} possui forte tendência de virada`
+      );
+
+      homeScore += 8;
+    }
+
+    if (
+      awayComeback.eliteComeback
+    ) {
+
+      reasons.push(
+        `${match.awayTeam} possui forte tendência de virada`
+      );
+
+      awayScore += 8;
+    }
 
     // ======================================
     // REASONS
@@ -316,7 +545,7 @@ export class FootballPredictionEngine {
     // CONFIDENCE
     // ======================================
 
-    const confidence =
+    let confidence =
       Math.min(
         95,
 
@@ -329,6 +558,16 @@ export class FootballPredictionEngine {
           ).toFixed(2)
         )
       );
+
+    // ======================================
+    // 🧠 CALIBRATION
+    // ======================================
+
+    confidence =
+      ConfidenceCalibrator
+        .calibrate(
+          confidence
+        );
 
     // ======================================
     // FAIR ODD
@@ -395,6 +634,25 @@ export class FootballPredictionEngine {
           : prediction === 'AWAY'
           ? 'AWAY_WIN'
           : 'DRAW';
+    }
+
+    // ======================================
+    // 🔥 CHAOS DETECTION
+    // ======================================
+
+    if (chaos.insaneMatch) {
+
+      reasons.push(
+        'Partida extremamente caótica'
+      );
+
+      market = 'OVER_2_5';
+
+      confidence =
+        Math.min(
+          99,
+          confidence + 5
+        );
     }
 
     // ======================================

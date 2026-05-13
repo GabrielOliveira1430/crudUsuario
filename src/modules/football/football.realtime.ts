@@ -25,6 +25,38 @@ import {
 } from '../../modules/football-ai/engines/value-bet.engine';
 
 import {
+  MatchTimelineEngine
+} from '../../modules/football-ai/engines/match-timeline.engine';
+
+import {
+  LiveEventEngine
+} from '../../modules/football-ai/engines/live-event.engine';
+
+import {
+  QuantumScoreEngine
+} from '../../modules/football-ai/engines/quantum-score.engine';
+
+import {
+  RankingEngine
+} from '../../modules/football-ai/engines/ranking.engine';
+
+import {
+  weightOptimizer
+} from '../football-ai/learning/weight.optimizer';
+
+import {
+  QuantumMarketEngine
+} from '../../modules/football-ai/quantum/quantum-market.engine';
+
+import {
+  QuantumMatchEngine
+} from '../../modules/football-ai/quantum/quantum-match.engine';
+
+import {
+  AICoreEngine
+} from '../../modules/football-ai/core/ai-core.engine';
+
+import {
   broadcastFootball
 } from '../../shared/websocket/ws.server';
 
@@ -172,15 +204,157 @@ export class FootballRealtime {
       }
 
       // ==========================================
-      // 🧠 PREDICTIONS
+      // 🧠 PREDICTIONS + TIMELINE
       // ==========================================
 
       const predictions =
         FootballPredictionEngine
           .predict(matches)
+          .map((prediction: any) => {
+
+            const timeline =
+              MatchTimelineEngine.analyze(
+
+                `${prediction.homeTeam}_${prediction.awayTeam}`,
+
+                prediction.pressure!
+              );
+
+            return {
+
+              ...prediction,
+
+              timeline
+            };
+          })
           .sort(
             (a: any, b: any) =>
               b.confidence - a.confidence
+          );
+
+      // ==========================================
+      // ⚛️ QUANTUM MATCH ENGINE
+      // ==========================================
+
+      const quantum =
+        QuantumMatchEngine
+          .simulateMany(
+            predictions
+          );
+
+      // ==========================================
+      // ⚛️ QUANTUM MARKET ANALYSIS
+      // ==========================================
+
+      const quantumAnalysis =
+
+        predictions.map(
+          prediction => ({
+
+            prediction,
+
+            quantum:
+
+              QuantumMarketEngine
+                .analyze(
+                  prediction
+                )
+          })
+        );
+
+      // ==========================================
+      // 🧠 AI CORE
+      // ==========================================
+
+      const aiCore =
+        AICoreEngine.process();
+
+      // ==========================================
+      // 🛰️ TACTICAL SNAPSHOT
+      // ==========================================
+
+      const tactical =
+        predictions.map((p) => ({
+
+          match:
+            `${p.homeTeam} vs ${p.awayTeam}`,
+
+          homeTeam:
+            p.homeTeam,
+
+          awayTeam:
+            p.awayTeam,
+
+          homeDanger:
+            Math.floor(
+              Math.random() * 100
+            ),
+
+          awayDanger:
+            Math.floor(
+              Math.random() * 100
+            ),
+
+          possessionHome:
+            Math.floor(
+              40 + Math.random() * 20
+            ),
+
+          possessionAway:
+            Math.floor(
+              40 + Math.random() * 20
+            ),
+
+          intensity:
+            Math.floor(
+              60 + Math.random() * 40
+            ),
+
+          zones: [],
+
+          momentumFlow: []
+        }));
+
+      // ==========================================
+      // 🚨 LIVE EVENTS
+      // ==========================================
+
+      const liveEvents =
+        LiveEventEngine
+          .analyzeMany(
+            predictions
+          );
+
+      // ==========================================
+      // ⚛️ QUANTUM SCORES
+      // ==========================================
+
+      const quantumScores =
+        QuantumScoreEngine
+          .analyzeMany(
+            predictions,
+            liveEvents
+          )
+          .sort(
+            (a, b) =>
+              b.quantumScore -
+              a.quantumScore
+          );
+
+      // ==========================================
+      // 🏆 RANKING ENGINE
+      // ==========================================
+
+      const rankedMatches =
+        RankingEngine
+          .analyze(
+            quantumScores
+          );
+
+      const topSignals =
+        RankingEngine
+          .topSignals(
+            rankedMatches
           );
 
       // ==========================================
@@ -259,6 +433,56 @@ export class FootballRealtime {
           predictions[0] || null,
 
         // ==========================================
+        // ⚛️ QUANTUM MATCH
+        // ==========================================
+
+        quantum,
+
+        // ==========================================
+        // ⚛️ QUANTUM MARKET
+        // ==========================================
+
+        quantumAnalysis,
+
+        // ==========================================
+        // 🧠 AI CORE
+        // ==========================================
+
+        aiCore,
+
+        // ==========================================
+        // 🛰️ TACTICAL
+        // ==========================================
+
+        tactical,
+
+        // ==========================================
+        // 🚨 LIVE EVENTS
+        // ==========================================
+
+        liveEvents,
+
+        // ==========================================
+        // ⚛️ QUANTUM
+        // ==========================================
+
+        quantumScores,
+
+        bestQuantum:
+          quantumScores[0] || null,
+
+        // ==========================================
+        // 🏆 RANKING
+        // ==========================================
+
+        rankedMatches,
+
+        topSignals,
+
+        bestRanked:
+          rankedMatches[0] || null,
+
+        // ==========================================
         // 💰 ODDS
         // ==========================================
 
@@ -290,6 +514,22 @@ export class FootballRealtime {
       };
 
       // ==========================================
+      // 🧠 AUTO EVOLUTION
+      // ==========================================
+
+      try {
+
+        weightOptimizer.optimize();
+
+      } catch (error) {
+
+        console.error(
+          '🔴 WeightOptimizer erro:',
+          error
+        );
+      }
+
+      // ==========================================
       // 🔥 HASH
       // ==========================================
 
@@ -311,7 +551,13 @@ export class FootballRealtime {
             snapshot.bestPrediction,
 
           bestValueBet:
-            snapshot.bestValueBet
+            snapshot.bestValueBet,
+
+          bestQuantum:
+            snapshot.bestQuantum,
+
+          bestRanked:
+            snapshot.bestRanked
         });
 
       // ==========================================
@@ -346,6 +592,36 @@ export class FootballRealtime {
       console.log(
         '💰 Value Bets:',
         snapshot.totalValueBets
+      );
+
+      console.log(
+        '🚨 Live Events:',
+        snapshot.liveEvents?.length || 0
+      );
+
+      console.log(
+        '⚛️ Quantum Scores:',
+        snapshot.quantumScores?.length || 0
+      );
+
+      console.log(
+        '🏆 Ranked Matches:',
+        snapshot.rankedMatches?.length || 0
+      );
+
+      console.log(
+        '🧠 Quantum Analysis:',
+        snapshot.quantumAnalysis?.length || 0
+      );
+
+      console.log(
+        '🛰️ Tactical Analysis:',
+        snapshot.tactical?.length || 0
+      );
+
+      console.log(
+        '⚛️ Quantum Match Simulations:',
+        snapshot.quantum?.length || 0
       );
 
       // ==========================================
