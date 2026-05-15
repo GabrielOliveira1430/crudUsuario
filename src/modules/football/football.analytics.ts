@@ -1,4 +1,6 @@
-import {
+// src/modules/football/football.analytics.ts
+
+import type {
   FootballMatch
 } from './football.provider';
 
@@ -24,6 +26,8 @@ export type TeamStats = {
 
   goalDifference: number;
 
+  points: number;
+
   performance: number;
 
   form: string[];
@@ -34,14 +38,50 @@ export type TeamStats = {
 
   averageGoals: number;
 
+  averageConceded: number;
+
   winRate: number;
+
+  drawRate: number;
+
+  lossRate: number;
+
+  offensiveRating: number;
+
+  defensiveRating: number;
+
+  consistency: number;
+
+  momentum: number;
+
+  xgScore: number;
+
+  updatedAt: number;
 };
 
 // ==========================================
-// ⚽ ANALYTICS
+// ⚽ ANALYTICS ENGINE
 // ==========================================
 
 export class FootballAnalytics {
+
+  // ==========================================
+  // FORM WEIGHT
+  // ==========================================
+
+  private static formWeight(
+    index: number
+  ): number {
+
+    return Math.pow(
+      0.82,
+      index
+    );
+  }
+
+  // ==========================================
+  // ANALYZE
+  // ==========================================
 
   static analyze(
     matches: FootballMatch[]
@@ -76,6 +116,8 @@ export class FootballAnalytics {
 
         goalDifference: 0,
 
+        points: 0,
+
         performance: 0,
 
         form: [],
@@ -86,15 +128,49 @@ export class FootballAnalytics {
 
         averageGoals: 0,
 
-        winRate: 0
+        averageConceded: 0,
+
+        winRate: 0,
+
+        drawRate: 0,
+
+        lossRate: 0,
+
+        offensiveRating: 0,
+
+        defensiveRating: 0,
+
+        consistency: 0,
+
+        momentum: 0,
+
+        xgScore: 0,
+
+        updatedAt:
+          Date.now()
       };
     }
 
     // ==========================================
-    // LOOP
+    // LOOP MATCHES
     // ==========================================
 
     for (const match of matches) {
+
+      // ======================================
+      // VALIDATE
+      // ======================================
+
+      if (
+
+        match.homeScore === undefined ||
+
+        match.awayScore === undefined
+
+      ) {
+
+        continue;
+      }
 
       const home =
         match.homeTeam;
@@ -103,6 +179,7 @@ export class FootballAnalytics {
         match.awayTeam;
 
       if (!map.has(home)) {
+
         map.set(
           home,
           createTeam(home)
@@ -110,6 +187,7 @@ export class FootballAnalytics {
       }
 
       if (!map.has(away)) {
+
         map.set(
           away,
           createTeam(away)
@@ -123,35 +201,37 @@ export class FootballAnalytics {
         map.get(away)!;
 
       const homeGoals =
-        Number(
-          match.homeScore ?? 0
-        );
+        Number(match.homeScore);
 
       const awayGoals =
-        Number(
-          match.awayScore ?? 0
-        );
+        Number(match.awayScore);
 
-      // ==========================================
+      // ======================================
       // MATCHES
-      // ==========================================
+      // ======================================
 
       homeStats.matches++;
       awayStats.matches++;
 
-      // ==========================================
+      // ======================================
       // GOALS
-      // ==========================================
+      // ======================================
 
-      homeStats.goals += homeGoals;
-      homeStats.conceded += awayGoals;
+      homeStats.goals +=
+        homeGoals;
 
-      awayStats.goals += awayGoals;
-      awayStats.conceded += homeGoals;
+      awayStats.goals +=
+        awayGoals;
 
-      // ==========================================
+      homeStats.conceded +=
+        awayGoals;
+
+      awayStats.conceded +=
+        homeGoals;
+
+      // ======================================
       // CLEAN SHEETS
-      // ==========================================
+      // ======================================
 
       if (awayGoals === 0) {
         homeStats.cleanSheets++;
@@ -161,9 +241,9 @@ export class FootballAnalytics {
         awayStats.cleanSheets++;
       }
 
-      // ==========================================
+      // ======================================
       // FAILED TO SCORE
-      // ==========================================
+      // ======================================
 
       if (homeGoals === 0) {
         homeStats.failedToScore++;
@@ -173,30 +253,43 @@ export class FootballAnalytics {
         awayStats.failedToScore++;
       }
 
-      // ==========================================
+      // ======================================
       // RESULT
-      // ==========================================
+      // ======================================
 
       if (homeGoals > awayGoals) {
 
         homeStats.wins++;
         awayStats.losses++;
 
+        homeStats.points += 3;
+
         homeStats.form.push('W');
         awayStats.form.push('L');
 
-      } else if (awayGoals > homeGoals) {
+      }
+
+      else if (
+        awayGoals > homeGoals
+      ) {
 
         awayStats.wins++;
         homeStats.losses++;
 
+        awayStats.points += 3;
+
         awayStats.form.push('W');
         homeStats.form.push('L');
 
-      } else {
+      }
+
+      else {
 
         homeStats.draws++;
         awayStats.draws++;
+
+        homeStats.points += 1;
+        awayStats.points += 1;
 
         homeStats.form.push('D');
         awayStats.form.push('D');
@@ -204,7 +297,7 @@ export class FootballAnalytics {
     }
 
     // ==========================================
-    // FINALIZE
+    // FINAL CALCULATIONS
     // ==========================================
 
     const result =
@@ -212,67 +305,258 @@ export class FootballAnalytics {
 
     result.forEach(team => {
 
-      team.goalDifference =
+      const matches =
+        Math.max(
+          1,
+          team.matches
+        );
 
+      // ======================================
+      // BASIC
+      // ======================================
+
+      team.goalDifference =
         team.goals -
         team.conceded;
 
-      team.performance = Number(
+      // ======================================
+      // PERFORMANCE
+      // ======================================
 
-        (
+      const maxPoints =
+        matches * 3;
+
+      const ratio =
+        team.points /
+        maxPoints;
+
+      team.performance =
+        Number(
           (
-            (team.wins * 3 + team.draws)
-            /
+            ratio * 100
+          ).toFixed(2)
+        );
+
+      // ======================================
+      // GOALS
+      // ======================================
+
+      team.averageGoals =
+        Number(
+          (
+            team.goals /
+            matches
+          ).toFixed(2)
+        );
+
+      team.averageConceded =
+        Number(
+          (
+            team.conceded /
+            matches
+          ).toFixed(2)
+        );
+
+      // ======================================
+      // RATES
+      // ======================================
+
+      team.winRate =
+        Number(
+          (
+            (
+              team.wins /
+              matches
+            ) * 100
+          ).toFixed(2)
+        );
+
+      team.drawRate =
+        Number(
+          (
+            (
+              team.draws /
+              matches
+            ) * 100
+          ).toFixed(2)
+        );
+
+      team.lossRate =
+        Number(
+          (
+            (
+              team.losses /
+              matches
+            ) * 100
+          ).toFixed(2)
+        );
+
+      // ======================================
+      // OFFENSIVE RATING
+      // ======================================
+
+      team.offensiveRating =
+        Number(
+          (
+            (
+              team.averageGoals * 25
+            ) +
+
+            (
+              team.winRate * 0.35
+            )
+          ).toFixed(2)
+        );
+
+      // ======================================
+      // DEFENSIVE RATING
+      // ======================================
+
+      team.defensiveRating =
+        Number(
+          (
+            Math.max(
+              0,
+
+              100 -
+
+              (
+                team.averageConceded * 22
+              )
+            )
+          ).toFixed(2)
+        );
+
+      // ======================================
+      // CONSISTENCY
+      // ======================================
+
+      const recent =
+        team.form.slice(-5);
+
+      const wins =
+        recent.filter(
+          r => r === 'W'
+        ).length;
+
+      team.consistency =
+        Number(
+          (
+            (
+              wins /
+              Math.max(
+                1,
+                recent.length
+              )
+            ) * 100
+          ).toFixed(2)
+        );
+
+      // ======================================
+      // MOMENTUM
+      // ======================================
+
+      let momentum = 0;
+
+      recent
+        .reverse()
+        .forEach(
+          (
+            result,
+            index
+          ) => {
+
+            const weight =
+              this.formWeight(
+                index
+              );
+
+            if (result === 'W') {
+              momentum +=
+                100 * weight;
+            }
+
+            else if (
+              result === 'D'
+            ) {
+
+              momentum +=
+                50 * weight;
+            }
+          }
+        );
+
+      team.momentum =
+        Number(
+          (
+            momentum /
             Math.max(
               1,
-              team.matches * 3
+              recent.length
             )
-          ) * 100
-        ).toFixed(2)
-      );
+          ).toFixed(2)
+        );
 
-      team.averageGoals = Number(
+      // ======================================
+      // XG SCORE ESTIMATION
+      // ======================================
 
-        (
-          team.goals /
-          Math.max(1, team.matches)
-        ).toFixed(2)
-      );
+      team.xgScore =
+        Number(
+          (
+            (
+              team.averageGoals * 0.65
+            ) +
 
-      team.winRate = Number(
+            (
+              (
+                team.goalDifference /
+                matches
+              ) * 0.35
+            )
+          ).toFixed(2)
+        );
 
-        (
-          (team.wins /
-          Math.max(1, team.matches))
-          * 100
-        ).toFixed(2)
-      );
+      // ======================================
+      // LIMIT FORM
+      // ======================================
 
       team.form =
-        team.form.slice(-5);
+        recent;
+
+      team.updatedAt =
+        Date.now();
     });
 
     // ==========================================
     // SORT
     // ==========================================
 
-    return result.sort((a, b) => {
+    return result.sort(
+      (a, b) => {
 
-      if (
-        b.performance !==
-        a.performance
-      ) {
+        const scoreA =
 
-        return (
-          b.performance -
-          a.performance
-        );
+          (a.performance * 0.45) +
+
+          (a.offensiveRating * 0.2) +
+
+          (a.defensiveRating * 0.2) +
+
+          (a.momentum * 0.15);
+
+        const scoreB =
+
+          (b.performance * 0.45) +
+
+          (b.offensiveRating * 0.2) +
+
+          (b.defensiveRating * 0.2) +
+
+          (b.momentum * 0.15);
+
+        return scoreB - scoreA;
       }
-
-      return (
-        b.goalDifference -
-        a.goalDifference
-      );
-    });
+    );
   }
 }

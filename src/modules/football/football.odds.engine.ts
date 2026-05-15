@@ -1,13 +1,12 @@
-import {
+// src/modules/football/football.odds.engine.ts
+
+import type {
   FootballMatch
 } from './football.provider';
 
 import {
-
   FootballPrediction,
-
   FootballPredictionEngine
-
 } from './football.prediction.engine';
 
 // ==========================================
@@ -15,72 +14,99 @@ import {
 // ==========================================
 
 export type OddsResult = {
-
   homeTeam: string;
-
   awayTeam: string;
-
   winner: string;
 
   probability: number;
-
   fairOdd: number;
-
   impliedProbability: number;
-
   edge: number;
-
   valueBet: boolean;
 };
 
 // ==========================================
-// ⚽ ODDS ENGINE
+// ⚽ ODDS ENGINE (REAL MODEL BASE)
 // ==========================================
 
 export class FootballOddsEngine {
+
+  // ==========================================
+  // 🎯 NORMALIZA PROBABILIDADE (REALISTA)
+  // ==========================================
+
+  private static normalizeProbability(
+    confidence: number
+  ): number {
+
+    // proteção contra IA inflada
+    const safe =
+      Math.max(
+        35,
+        Math.min(
+          confidence || 50,
+          90
+        )
+      );
+
+    // curva mais próxima de mercado real
+    const curve =
+      Math.pow(
+        safe / 100,
+        1.2
+      ) * 100;
+
+    // suavização (evita extremos)
+    return Math.min(
+      92,
+      Math.max(
+        38,
+        curve
+      )
+    );
+  }
 
   // ==========================================
   // 📊 SINGLE
   // ==========================================
 
   private static calculateSingle(
-
     prediction: FootballPrediction
-
   ): OddsResult {
 
     const probability =
-
-      Math.max(
-        1,
+      this.normalizeProbability(
         prediction.confidence
       );
 
     const fairOdd =
-
       Number(
-        (100 / probability)
-          .toFixed(2)
+        (
+          100 / probability
+        ).toFixed(2)
       );
 
     const impliedProbability =
-
       Number(
-        ((1 / fairOdd) * 100)
-          .toFixed(2)
+        (
+          (1 / fairOdd) * 100
+        ).toFixed(2)
       );
 
-    const edge = Number(
+    // edge mais realista
+    // (mercado sempre tem margem)
+    const edge =
+      Number(
+        (
+          probability -
+          impliedProbability
+        ).toFixed(2)
+      );
 
-      (
-        probability -
-        impliedProbability
-      ).toFixed(2)
-    );
-
+    // filtro mais conservador
+    // (evita falso positivo)
     const valueBet =
-
-      edge > 5;
+      edge >= 7;
 
     return {
 
@@ -117,22 +143,30 @@ export class FootballOddsEngine {
   ): OddsResult[] {
 
     const predictions =
+      FootballPredictionEngine.predict(
+        matches
+      );
 
-      FootballPredictionEngine
-        .predict(matches);
+    if (!predictions?.length) {
+
+      return [];
+    }
 
     return predictions
 
-      .map(prediction =>
+      .map(
+        prediction =>
 
-        this.calculateSingle(
-          prediction
-        )
+          this.calculateSingle(
+            prediction
+          )
       )
 
       .sort(
         (a, b) =>
-          b.edge - a.edge
+
+          b.edge -
+          a.edge
       );
   }
 }

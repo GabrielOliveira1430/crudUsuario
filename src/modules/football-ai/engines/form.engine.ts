@@ -37,6 +37,18 @@ export type TeamForm = {
   failedToScore: number;
 
   recentForm: string[];
+
+  xG?: number;
+
+  xGA?: number;
+
+  shotsPerGame?: number;
+
+  dangerousAttacks?: number;
+
+  possession?: number;
+
+  updatedAt?: string;
 };
 
 // ======================================
@@ -45,12 +57,42 @@ export type TeamForm = {
 
 export class FormEngine {
 
-  // ======================================
-  // 🧠 MEMORY
-  // ======================================
-
   private static memory =
     new Map<string, TeamForm>();
+
+  // ======================================
+  // FORM WEIGHT
+  // ======================================
+
+  private static formWeight(
+    index: number
+  ) {
+
+    return Math.pow(
+      0.82,
+      index
+    );
+  }
+
+  // ======================================
+  // SAFE NORMALIZE
+  // ======================================
+
+  private static normalize(
+    value: number,
+    min: number,
+    max: number
+  ) {
+
+    return Number(
+      (
+        Math.max(
+          min,
+          Math.min(max, value)
+        )
+      ).toFixed(2)
+    );
+  }
 
   // ======================================
   // 📊 CALCULATE
@@ -62,10 +104,6 @@ export class FormEngine {
 
     const map =
       new Map<string, TeamForm>();
-
-    // ======================================
-    // CREATE TEAM
-    // ======================================
 
     function createTeam(
       team: string
@@ -95,24 +133,33 @@ export class FormEngine {
 
         failedToScore: 0,
 
-        recentForm: []
+        recentForm: [],
+
+        xG: 0,
+
+        xGA: 0,
+
+        shotsPerGame: 0,
+
+        dangerousAttacks: 0,
+
+        possession: 50,
+
+        updatedAt:
+          new Date().toISOString()
       };
     }
 
     // ======================================
-    // PROCESS MATCHES
+    // MATCH LOOP
     // ======================================
 
     for (const match of matches) {
 
-      const home =
-        match.homeTeam;
-
-      const away =
-        match.awayTeam;
+      const home = match.homeTeam;
+      const away = match.awayTeam;
 
       if (!map.has(home)) {
-
         map.set(
           home,
           createTeam(home)
@@ -120,7 +167,6 @@ export class FormEngine {
       }
 
       if (!map.has(away)) {
-
         map.set(
           away,
           createTeam(away)
@@ -134,21 +180,17 @@ export class FormEngine {
         map.get(away)!;
 
       const homeGoals =
-        Number(match.homeScore || 0);
+        Number(
+          match.homeScore ?? 0
+        );
 
       const awayGoals =
-        Number(match.awayScore || 0);
-
-      // ======================================
-      // MATCHES
-      // ======================================
+        Number(
+          match.awayScore ?? 0
+        );
 
       homeData.matches++;
       awayData.matches++;
-
-      // ======================================
-      // GOALS
-      // ======================================
 
       homeData.averageGoals +=
         homeGoals;
@@ -161,6 +203,80 @@ export class FormEngine {
 
       awayData.averageConceded +=
         homeGoals;
+
+      // ======================================
+      // APPROX REALISTIC xG
+      // ======================================
+
+      homeData.xG! +=
+        (
+          homeGoals * 0.7
+        ) + 0.8;
+
+      awayData.xG! +=
+        (
+          awayGoals * 0.7
+        ) + 0.8;
+
+      homeData.xGA! +=
+        (
+          awayGoals * 0.7
+        ) + 0.8;
+
+      awayData.xGA! +=
+        (
+          homeGoals * 0.7
+        ) + 0.8;
+
+      // ======================================
+      // SHOTS
+      // ======================================
+
+      homeData.shotsPerGame! +=
+        (
+          homeGoals * 2
+        ) + 8;
+
+      awayData.shotsPerGame! +=
+        (
+          awayGoals * 2
+        ) + 8;
+
+      // ======================================
+      // ATTACKS
+      // ======================================
+
+      homeData.dangerousAttacks! +=
+        (
+          homeGoals * 6
+        ) + 20;
+
+      awayData.dangerousAttacks! +=
+        (
+          awayGoals * 6
+        ) + 20;
+
+      // ======================================
+      // POSSESSION
+      // ======================================
+
+      if (
+        homeGoals >
+        awayGoals
+      ) {
+
+        homeData.possession! += 2;
+        awayData.possession! -= 2;
+      }
+
+      if (
+        awayGoals >
+        homeGoals
+      ) {
+
+        awayData.possession! += 2;
+        homeData.possession! -= 2;
+      }
 
       // ======================================
       // CLEAN SHEETS
@@ -187,44 +303,51 @@ export class FormEngine {
       }
 
       // ======================================
-      // RESULT
+      // FORM
       // ======================================
 
-      if (homeGoals > awayGoals) {
+      if (
+        homeGoals >
+        awayGoals
+      ) {
 
         homeData.recentForm.push('W');
+
         awayData.recentForm.push('L');
 
-        homeData.formScore += 3;
-
-      } else if (awayGoals > homeGoals) {
+      } else if (
+        awayGoals >
+        homeGoals
+      ) {
 
         awayData.recentForm.push('W');
-        homeData.recentForm.push('L');
 
-        awayData.formScore += 3;
+        homeData.recentForm.push('L');
 
       } else {
 
         homeData.recentForm.push('D');
-        awayData.recentForm.push('D');
 
-        homeData.formScore += 1;
-        awayData.formScore += 1;
+        awayData.recentForm.push('D');
       }
     }
 
     // ======================================
-    // FINALIZE
+    // FINAL CALCULATION
     // ======================================
 
     const result =
-      Array.from(map.values());
+      Array.from(
+        map.values()
+      );
 
     result.forEach(team => {
 
       const matches =
-        Math.max(1, team.matches);
+        Math.max(
+          1,
+          team.matches
+        );
 
       // ======================================
       // AVERAGES
@@ -246,15 +369,73 @@ export class FormEngine {
           ).toFixed(2)
         );
 
+      team.xG =
+        Number(
+          (
+            (team.xG ?? 0) /
+            matches
+          ).toFixed(2)
+        );
+
+      team.xGA =
+        Number(
+          (
+            (team.xGA ?? 0) /
+            matches
+          ).toFixed(2)
+        );
+
+      team.shotsPerGame =
+        Number(
+          (
+            (team.shotsPerGame ?? 0) /
+            matches
+          ).toFixed(2)
+        );
+
+      team.dangerousAttacks =
+        Number(
+          (
+            (
+              team.dangerousAttacks ?? 0
+            ) / matches
+          ).toFixed(2)
+        );
+
+      team.possession =
+        this.normalize(
+          Number(
+            (
+              (
+                team.possession ?? 50
+              ) / matches
+            ).toFixed(2)
+          ),
+          35,
+          70
+        );
+
       // ======================================
       // OFFENSE
       // ======================================
 
       team.offensiveStrength =
-        Number(
+        this.normalize(
+
           (
-            team.averageGoals * 25
-          ).toFixed(2)
+            (team.averageGoals * 35) +
+
+            ((team.xG ?? 0) * 25) +
+
+            (
+              (
+                team.shotsPerGame ?? 0
+              ) * 1.2
+            )
+          ),
+
+          0,
+          100
         );
 
       // ======================================
@@ -262,49 +443,67 @@ export class FormEngine {
       // ======================================
 
       team.defensiveStrength =
-        Number(
+        this.normalize(
+
+          100 -
+
           (
-            Math.max(
-              0,
-              100 -
-              (
-                team.averageConceded * 20
-              )
-            )
-          ).toFixed(2)
+            (team.averageConceded * 30) +
+
+            ((team.xGA ?? 0) * 18)
+          ),
+
+          0,
+          100
         );
-
-      // ======================================
-      // LAST FIVE
-      // ======================================
-
-      const lastFive =
-        team.recentForm.slice(-5);
 
       // ======================================
       // MOMENTUM
       // ======================================
 
-      let momentum = 0;
+      const lastFive =
+        team.recentForm.slice(-5);
 
-      lastFive.forEach(result => {
+      let weighted = 0;
+      let totalWeight = 0;
 
-        if (result === 'W') {
-          momentum += 20;
-        }
+      lastFive
+        .reverse()
+        .forEach(
+          (
+            result,
+            index
+          ) => {
 
-        if (result === 'D') {
-          momentum += 10;
-        }
-      });
+            const weight =
+              this.formWeight(
+                index
+              );
+
+            totalWeight +=
+              weight;
+
+            if (result === 'W') {
+              weighted +=
+                100 * weight;
+            }
+
+            else if (
+              result === 'D'
+            ) {
+              weighted +=
+                50 * weight;
+            }
+          }
+        );
 
       team.momentum =
         Number(
           (
-            momentum /
+            weighted /
             Math.max(
               1,
-              lastFive.length
+              totalWeight
             )
           ).toFixed(2)
         );
@@ -318,11 +517,20 @@ export class FormEngine {
           r => r === 'W'
         ).length;
 
+      const draws =
+        lastFive.filter(
+          r => r === 'D'
+        ).length;
+
       team.consistency =
         Number(
           (
             (
-              wins /
+              (
+                wins +
+                (draws * 0.5)
+              ) /
+
               Math.max(
                 1,
                 lastFive.length
@@ -336,21 +544,31 @@ export class FormEngine {
       // ======================================
 
       team.formScore =
-        Number(
+        this.normalize(
+
           (
-            (
-              team.formScore /
-              (matches * 3)
-            ) * 100
-          ).toFixed(2)
+            (team.momentum * 0.4) +
+
+            (team.consistency * 0.25) +
+
+            (team.offensiveStrength * 0.2) +
+
+            (team.defensiveStrength * 0.15)
+          ),
+
+          0,
+          100
         );
 
       // ======================================
-      // LIMIT RECENT FORM
+      // FORM LIMIT
       // ======================================
 
       team.recentForm =
         lastFive;
+
+      team.updatedAt =
+        new Date().toISOString();
     });
 
     // ======================================
@@ -358,86 +576,19 @@ export class FormEngine {
     // ======================================
 
     return result.sort(
+
       (a, b) =>
+
         (
           b.formScore +
           b.momentum
         ) -
+
         (
           a.formScore +
           a.momentum
         )
     );
-  }
-
-  // ======================================
-  // 🔄 CONVERT ANALYTICS
-  // ======================================
-
-  private static fromAnalytics(
-    analytics: TeamStats[]
-  ): TeamForm[] {
-
-    return analytics.map(team => ({
-
-      team:
-        team.team,
-
-      matches:
-        team.matches,
-
-      formScore:
-        team.performance,
-
-      momentum:
-        team.winRate,
-
-      offensiveStrength:
-        Number(
-          (
-            team.averageGoals * 25
-          ).toFixed(2)
-        ),
-
-      defensiveStrength:
-        Number(
-          (
-            Math.max(
-              0,
-              100 -
-              (
-                (
-                  team.conceded /
-                  Math.max(1, team.matches)
-                ) * 20
-              )
-            )
-          ).toFixed(2)
-        ),
-
-      consistency:
-        team.winRate,
-
-      averageGoals:
-        team.averageGoals,
-
-      averageConceded:
-        Number(
-          (
-            team.conceded /
-            Math.max(1, team.matches)
-          ).toFixed(2)
-        ),
-
-      cleanSheets:
-        team.cleanSheets,
-
-      failedToScore:
-        team.failedToScore,
-
-      recentForm:
-        team.form
-    }));
   }
 
   // ======================================
@@ -451,33 +602,33 @@ export class FormEngine {
       TeamStats[]
   ) {
 
-    // ======================================
-    // EMPTY
-    // ======================================
-
-    if (!data.length) {
+    if (
+      !data ||
+      data.length === 0
+    ) {
       return;
     }
 
-    // ======================================
-    // CASE 1:
     // MATCHES
-    // ======================================
 
-    if ('homeTeam' in data[0]) {
+    if (
+      'homeTeam' in data[0]
+    ) {
 
       const forms =
         this.calculate(
           data as FootballMatch[]
         );
 
-      forms.forEach(form => {
+      for (
+        const form of forms
+      ) {
 
         this.memory.set(
           form.team,
           form
         );
-      });
+      }
 
       console.log(
         `🧠 FormEngine calculado: ${forms.length} times`
@@ -486,10 +637,7 @@ export class FormEngine {
       return;
     }
 
-    // ======================================
-    // CASE 2:
     // ANALYTICS
-    // ======================================
 
     if (
       'performance' in data[0]
@@ -500,13 +648,15 @@ export class FormEngine {
           data as TeamStats[]
         );
 
-      forms.forEach(form => {
+      for (
+        const form of forms
+      ) {
 
         this.memory.set(
           form.team,
           form
         );
-      });
+      }
 
       console.log(
         `🧠 FormEngine analytics: ${forms.length} times`
@@ -515,21 +665,20 @@ export class FormEngine {
       return;
     }
 
-    // ======================================
-    // CASE 3:
-    // FORMS
-    // ======================================
+    // DIRECT FORMS
 
     const forms =
       data as TeamForm[];
 
-    forms.forEach(form => {
+    for (
+      const form of forms
+    ) {
 
       this.memory.set(
         form.team,
         form
       );
-    });
+    }
 
     console.log(
       `🧠 FormEngine atualizado: ${forms.length} times`
@@ -537,7 +686,135 @@ export class FormEngine {
   }
 
   // ======================================
-  // 🔍 GET TEAM
+  // 🔄 CONVERT ANALYTICS
+  // ======================================
+
+  private static fromAnalytics(
+    analytics: TeamStats[]
+  ): TeamForm[] {
+
+    return analytics.map(
+      team => ({
+
+        team:
+          team.team,
+
+        matches:
+          team.matches,
+
+        formScore:
+          team.performance,
+
+        momentum:
+          team.winRate,
+
+        offensiveStrength:
+          this.normalize(
+            team.averageGoals * 28,
+            0,
+            100
+          ),
+
+        defensiveStrength:
+          this.normalize(
+
+            100 -
+
+            (
+              (
+                team.conceded /
+
+                Math.max(
+                  1,
+                  team.matches
+                )
+              ) * 22
+            ),
+
+            0,
+            100
+          ),
+
+        consistency:
+          team.winRate,
+
+        averageGoals:
+          team.averageGoals,
+
+        averageConceded:
+          Number(
+            (
+              team.conceded /
+
+              Math.max(
+                1,
+                team.matches
+              )
+            ).toFixed(2)
+          ),
+
+        cleanSheets:
+          team.cleanSheets,
+
+        failedToScore:
+          team.failedToScore,
+
+        recentForm:
+          team.form,
+
+        xG:
+          Number(
+            (
+              team.averageGoals * 1.15
+            ).toFixed(2)
+          ),
+
+        xGA:
+          Number(
+            (
+              (
+                team.conceded /
+
+                Math.max(
+                  1,
+                  team.matches
+                )
+              ) * 1.1
+            ).toFixed(2)
+          ),
+
+        shotsPerGame:
+          Number(
+            (
+              team.averageGoals * 4 + 8
+            ).toFixed(2)
+          ),
+
+        dangerousAttacks:
+          Number(
+            (
+              team.averageGoals * 12 + 25
+            ).toFixed(2)
+          ),
+
+        possession:
+          this.normalize(
+            45 +
+            (
+              team.winRate * 0.2
+            ),
+            35,
+            70
+          ),
+
+        updatedAt:
+          new Date().toISOString()
+      })
+    );
+  }
+
+  // ======================================
+  // GETTERS
   // ======================================
 
   static get(
@@ -547,20 +824,12 @@ export class FormEngine {
     return this.memory.get(team);
   }
 
-  // ======================================
-  // 📦 GET ALL
-  // ======================================
-
   static getAll() {
 
     return Array.from(
       this.memory.values()
     );
   }
-
-  // ======================================
-  // 🧹 CLEAR
-  // ======================================
 
   static clear() {
 

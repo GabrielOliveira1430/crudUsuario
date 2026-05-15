@@ -17,7 +17,6 @@ import type {
 // ======================================
 
 export type QuantumSignal =
-
   | 'WEAK'
   | 'MEDIUM'
   | 'STRONG'
@@ -25,7 +24,6 @@ export type QuantumSignal =
   | 'GODLIKE';
 
 export type QuantumAction =
-
   | 'AVOID'
   | 'WATCH'
   | 'ENTER'
@@ -60,6 +58,27 @@ export type QuantumAnalysis = {
 
   volatilityScore: number;
 
+  timelineScore: number;
+
+  marketConfidence: number;
+
+  attackStrength: number;
+
+  stabilityIndex: number;
+
+  dangerIndex: number;
+
+  expectedGoals: number;
+
+  trend:
+    | 'BULLISH'
+    | 'BEARISH'
+    | 'NEUTRAL';
+
+  eliteEntry: boolean;
+
+  safeEntry: boolean;
+
   reasons: string[];
 };
 
@@ -68,6 +87,39 @@ export type QuantumAnalysis = {
 // ======================================
 
 export class QuantumScoreEngine {
+
+  // ======================================
+  // HELPERS
+  // ======================================
+
+  private static clamp(
+    value: number,
+    min: number,
+    max: number
+  ): number {
+
+    return Math.max(
+      min,
+      Math.min(max, value)
+    );
+  }
+
+  private static safe(
+    value?: number,
+    fallback = 0
+  ): number {
+
+    if (
+      value === undefined ||
+      value === null ||
+      Number.isNaN(value) ||
+      !Number.isFinite(value)
+    ) {
+      return fallback;
+    }
+
+    return value;
+  }
 
   // ======================================
   // ANALYZE
@@ -94,29 +146,63 @@ export class QuantumScoreEngine {
     // ======================================
 
     let score =
-      prediction.confidence * 0.35;
+      this.safe(
+        prediction.confidence
+      ) * 0.35;
 
     // ======================================
     // EDGE
     // ======================================
 
     score +=
-      prediction.edge * 1.8;
+      this.safe(
+        prediction.edge
+      ) * 1.4;
 
     // ======================================
     // RISK
     // ======================================
 
     score -=
-      prediction.risk * 0.5;
+      this.safe(
+        prediction.risk
+      ) * 0.45;
+
+    // ======================================
+    // INTERNAL METRICS
+    // ======================================
+
+    let pressureScore = 0;
+
+    let momentumScore = 0;
+
+    let volatilityScore = 0;
+
+    let timelineScore = 0;
+
+    let attackStrength = 0;
+
+    let stabilityIndex = 50;
+
+    let dangerIndex = 0;
+
+    let expectedGoals =
+      this.safe(
+        prediction.expectedGoalsHome
+      ) +
+      this.safe(
+        prediction.expectedGoalsAway
+      );
+
+    let trend:
+      | 'BULLISH'
+      | 'BEARISH'
+      | 'NEUTRAL' =
+      'NEUTRAL';
 
     // ======================================
     // TIMELINE
     // ======================================
-
-    let pressureScore = 0;
-    let momentumScore = 0;
-    let volatilityScore = 0;
 
     if (timeline) {
 
@@ -125,16 +211,70 @@ export class QuantumScoreEngine {
       // ====================================
 
       pressureScore =
-        timeline.dangerLevel * 0.3;
+        Number(
+          (
+            this.safe(
+              timeline.dangerLevel
+            ) * 0.3
+          ).toFixed(2)
+        );
 
       score += pressureScore;
 
+      timelineScore += pressureScore;
+
       // ====================================
-      // GOAL PROBABILITY
+      // NEXT GOAL
       // ====================================
 
-      score +=
-        timeline.nextGoalProbability * 0.25;
+      const nextGoalBoost =
+        this.safe(
+          timeline.nextGoalProbability
+        ) * 0.22;
+
+      score += nextGoalBoost;
+
+      timelineScore += nextGoalBoost;
+
+      // ====================================
+      // ATTACK STRENGTH
+      // ====================================
+
+      attackStrength =
+        Number(
+          (
+            (
+              this.safe(
+                timeline.nextGoalProbability
+              ) +
+
+              this.safe(
+                timeline.dangerLevel
+              )
+            ) / 2
+          ).toFixed(2)
+        );
+
+      // ====================================
+      // EXPECTED GOALS
+      // ====================================
+
+      expectedGoals =
+        Number(
+          (
+            (
+              this.safe(
+                timeline.nextGoalProbability
+              ) / 45
+            ) +
+
+            (
+              this.safe(
+                timeline.dangerLevel
+              ) / 65
+            )
+          ).toFixed(2)
+        );
 
       // ====================================
       // MOMENTUM
@@ -144,23 +284,72 @@ export class QuantumScoreEngine {
         timeline.momentumTrend === 'UP'
       ) {
 
-        momentumScore = 12;
+        momentumScore += 10;
 
-        score += 12;
+        score += 10;
+
+        trend = 'BULLISH';
 
         reasons.push(
           'Momentum ofensivo crescente'
         );
       }
 
+      else if (
+        timeline.momentumTrend === 'DOWN'
+      ) {
+
+        momentumScore -= 8;
+
+        score -= 8;
+
+        trend = 'BEARISH';
+
+        reasons.push(
+          'Momentum ofensivo caiu'
+        );
+      }
+
+      // ====================================
+      // PRESSURE TREND
+      // ====================================
+
       if (
         timeline.pressureTrend === 'EXPLODING'
       ) {
 
-        score += 18;
+        score += 16;
+
+        timelineScore += 16;
 
         reasons.push(
           'Pressão extrema detectada'
+        );
+      }
+
+      else if (
+        timeline.pressureTrend === 'RISING'
+      ) {
+
+        score += 9;
+
+        timelineScore += 9;
+
+        reasons.push(
+          'Pressão ofensiva aumentando'
+        );
+      }
+
+      else if (
+        timeline.pressureTrend === 'FALLING'
+      ) {
+
+        score -= 9;
+
+        timelineScore -= 9;
+
+        reasons.push(
+          'Ritmo ofensivo caiu'
         );
       }
 
@@ -169,13 +358,18 @@ export class QuantumScoreEngine {
       // ====================================
 
       volatilityScore =
-        timeline.volatility;
+        this.safe(
+          timeline.volatility
+        );
+
+      dangerIndex =
+        volatilityScore;
 
       if (
-        timeline.volatility >= 30
+        volatilityScore >= 30
       ) {
 
-        score += 8;
+        score += 6;
 
         reasons.push(
           'Partida altamente volátil'
@@ -187,15 +381,36 @@ export class QuantumScoreEngine {
       // ====================================
 
       if (
-        timeline.comebackChance >= 40
+        this.safe(
+          timeline.comebackChance
+        ) >= 40
       ) {
 
-        score += 6;
+        score += 5;
+
+        timelineScore += 5;
 
         reasons.push(
           'Possível virada/reação'
         );
       }
+
+      // ====================================
+      // STABILITY
+      // ====================================
+
+      stabilityIndex =
+        Number(
+          (
+            Math.max(
+              0,
+              100 -
+              (
+                volatilityScore * 1.1
+              )
+            )
+          ).toFixed(2)
+        );
     }
 
     // ======================================
@@ -210,8 +425,8 @@ export class QuantumScoreEngine {
 
         case 'EXTREME_PRESSURE':
 
-          score += 15;
-          eventScore += 15;
+          score += 14;
+          eventScore += 14;
 
           reasons.push(
             'Evento: pressão extrema'
@@ -221,8 +436,8 @@ export class QuantumScoreEngine {
 
         case 'HIGH_GOAL_PROBABILITY':
 
-          score += 12;
-          eventScore += 12;
+          score += 10;
+          eventScore += 10;
 
           reasons.push(
             'Evento: próximo gol provável'
@@ -232,8 +447,8 @@ export class QuantumScoreEngine {
 
         case 'ELITE_VALUE':
 
-          score += 20;
-          eventScore += 20;
+          score += 18;
+          eventScore += 18;
 
           reasons.push(
             'Evento: elite value detectado'
@@ -243,8 +458,8 @@ export class QuantumScoreEngine {
 
         case 'TRAP_DETECTED':
 
-          score -= 25;
-          eventScore -= 25;
+          score -= 22;
+          eventScore -= 22;
 
           reasons.push(
             'Trap detectada'
@@ -254,8 +469,8 @@ export class QuantumScoreEngine {
 
         case 'MATCH_DEAD':
 
-          score -= 15;
-          eventScore -= 15;
+          score -= 14;
+          eventScore -= 14;
 
           reasons.push(
             'Partida sem intensidade'
@@ -266,17 +481,59 @@ export class QuantumScoreEngine {
     }
 
     // ======================================
+    // MARKET CONFIDENCE
+    // ======================================
+
+    const marketConfidence =
+      Number(
+        (
+          (
+            this.safe(
+              prediction.confidence
+            ) * 0.5
+          ) +
+
+          (
+            this.safe(
+              prediction.edge
+            ) * 1.5
+          ) +
+
+          (
+            pressureScore * 0.25
+          )
+        ).toFixed(2)
+      );
+
+    // ======================================
+    // SAFE ENTRY
+    // ======================================
+
+    const safeEntry =
+
+      prediction.risk <= 25 &&
+
+      score >= 72;
+
+    // ======================================
+    // ELITE ENTRY
+    // ======================================
+
+    const eliteEntry =
+
+      score >= 88 &&
+
+      prediction.edge >= 14;
+
+    // ======================================
     // LIMIT
     // ======================================
 
     score =
-      Math.max(
+      this.clamp(
+        Number(score.toFixed(2)),
         0,
-
-        Math.min(
-          100,
-          Number(score.toFixed(2))
-        )
+        100
       );
 
     // ======================================
@@ -285,11 +542,11 @@ export class QuantumScoreEngine {
 
     let signal: QuantumSignal;
 
-    if (score >= 95) {
+    if (score >= 94) {
 
       signal = 'GODLIKE';
 
-    } else if (score >= 85) {
+    } else if (score >= 84) {
 
       signal = 'ELITE';
 
@@ -316,7 +573,7 @@ export class QuantumScoreEngine {
 
       action = 'ENTER_NOW';
 
-    } else if (score >= 75) {
+    } else if (score >= 74) {
 
       action = 'ENTER';
 
@@ -403,16 +660,61 @@ export class QuantumScoreEngine {
 
       riskLevel,
 
-      eventScore,
+      eventScore:
+        Number(
+          eventScore.toFixed(2)
+        ),
 
       pressureScore:
         Number(
           pressureScore.toFixed(2)
         ),
 
-      momentumScore,
+      momentumScore:
+        Number(
+          momentumScore.toFixed(2)
+        ),
 
-      volatilityScore,
+      volatilityScore:
+        Number(
+          volatilityScore.toFixed(2)
+        ),
+
+      timelineScore:
+        Number(
+          timelineScore.toFixed(2)
+        ),
+
+      marketConfidence:
+        Number(
+          marketConfidence.toFixed(2)
+        ),
+
+      attackStrength:
+        Number(
+          attackStrength.toFixed(2)
+        ),
+
+      stabilityIndex:
+        Number(
+          stabilityIndex.toFixed(2)
+        ),
+
+      dangerIndex:
+        Number(
+          dangerIndex.toFixed(2)
+        ),
+
+      expectedGoals:
+        Number(
+          expectedGoals.toFixed(2)
+        ),
+
+      trend,
+
+      eliteEntry,
+
+      safeEntry,
 
       reasons
     };
@@ -435,7 +737,7 @@ export class QuantumScoreEngine {
       events: LiveEvent[];
     }[]
 
-  ) {
+  ): QuantumAnalysis[] {
 
     return predictions.map(
       (prediction) => {

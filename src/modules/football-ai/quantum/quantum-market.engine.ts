@@ -1,8 +1,12 @@
-// src/modules/football-ai/quantum/quantum-market.engine.ts
+// src/modules/football-ai/quantum/quantum-match.engine.ts
 
 import type {
   FootballPrediction
 } from '../../football/football.prediction.engine';
+
+import type {
+  Market
+} from '../types/market.types';
 
 import {
   SmartMoneyTracker
@@ -21,17 +25,79 @@ import {
 } from './steam-move.engine';
 
 // ======================================
-// ENGINE
+// 🧠 TYPES
+// ======================================
+
+export type QuantumMarketAnalysis = {
+
+  smartMoney: any;
+
+  trap: any;
+
+  fakeFavorite: any;
+
+  steam: any;
+
+  quantumScore: number;
+
+  elite: boolean;
+
+  strong: boolean;
+
+  weak: boolean;
+
+  marketDirection:
+    | 'BULLISH'
+    | 'BEARISH'
+    | 'NEUTRAL';
+
+  volatility:
+    | 'LOW'
+    | 'MEDIUM'
+    | 'HIGH';
+
+  recommendation:
+    | 'AVOID'
+    | 'RISKY'
+    | 'GOOD'
+    | 'STRONG'
+    | 'ELITE';
+};
+
+// ======================================
+// 🧠 QUANTUM MARKET ENGINE
 // ======================================
 
 export class QuantumMarketEngine {
 
-  static analyze(
-    prediction: FootballPrediction
+  // ======================================
+  // SAFE
+  // ======================================
+
+  private static clamp(
+    value: number,
+    min = 1,
+    max = 100
   ) {
 
+    return Number(
+      Math.max(
+        min,
+        Math.min(max, value)
+      ).toFixed(2)
+    );
+  }
+
+  // ======================================
+  // ANALYZE
+  // ======================================
+
+  static analyze(
+    prediction: FootballPrediction
+  ): QuantumMarketAnalysis {
+
     // ======================================
-    // SMART MONEY
+    // 💰 SMART MONEY
     // ======================================
 
     const smartMoney =
@@ -40,7 +106,7 @@ export class QuantumMarketEngine {
       );
 
     // ======================================
-    // TRAP
+    // ⚠️ TRAP DETECTOR
     // ======================================
 
     const trap =
@@ -50,7 +116,7 @@ export class QuantumMarketEngine {
       );
 
     // ======================================
-    // FAKE FAVORITE
+    // 🎭 FAKE FAVORITE
     // ======================================
 
     const fakeFavorite =
@@ -59,53 +125,199 @@ export class QuantumMarketEngine {
       );
 
     // ======================================
-    // STEAM MOVE
+    // 🚀 STEAM MOVE
     // ======================================
 
     const steam =
       SteamMoveEngine.analyze();
 
     // ======================================
-    // QUANTUM SCORE
+    // 🧮 BASE SCORE
     // ======================================
 
     let quantumScore =
-      prediction.confidence;
+      Number(
+        prediction.confidence ?? 50
+      );
+
+    // ======================================
+    // 💰 SMART MONEY
+    // ======================================
 
     if (
-      smartMoney.suspicious
+      smartMoney?.suspicious
+    ) {
+
+      quantumScore += 6;
+    }
+
+    // ======================================
+    // ⚠️ TRAP
+    // ======================================
+
+    if (
+      trap?.dangerous
+    ) {
+
+      quantumScore -= 12;
+    }
+
+    // ======================================
+    // 🚀 STEAM
+    // ======================================
+
+    if (
+      steam?.explosive
     ) {
 
       quantumScore += 8;
     }
 
+    // ======================================
+    // 🎭 FAKE FAVORITE
+    // ======================================
+
+    // ✅ CORRIGIDO:
+    // fakeSignal ao invés de falseSignal
+
     if (
-      trap.dangerous
+      fakeFavorite?.fakeSignal
     ) {
 
-      quantumScore -= 15;
-    }
-
-    if (
-      steam.explosive
-    ) {
-
-      quantumScore += 10;
+      quantumScore -= 5;
     }
 
     // ======================================
-    // FINAL
+    // 🧠 CHAOS CONTROL
+    // ======================================
+
+    if (
+      prediction.chaosIndex >= 75
+    ) {
+
+      quantumScore -= 7;
+    }
+
+    // ======================================
+    // 🛡️ LOW RISK BOOST
+    // ======================================
+
+    if (
+      prediction.risk <= 20
+    ) {
+
+      quantumScore += 4;
+    }
+
+    // ======================================
+    // 📊 NORMALIZE
     // ======================================
 
     quantumScore =
-      Math.max(
-        1,
-
-        Math.min(
-          100,
-          quantumScore
-        )
+      this.clamp(
+        quantumScore
       );
+
+    // ======================================
+    // 📈 MARKET DIRECTION
+    // ======================================
+
+    let marketDirection:
+      | 'BULLISH'
+      | 'BEARISH'
+      | 'NEUTRAL' =
+      'NEUTRAL';
+
+    if (
+      quantumScore >= 75
+    ) {
+
+      marketDirection =
+        'BULLISH';
+    }
+
+    else if (
+      quantumScore <= 45
+    ) {
+
+      marketDirection =
+        'BEARISH';
+    }
+
+    // ======================================
+    // 🌪️ VOLATILITY
+    // ======================================
+
+    let volatility:
+      | 'LOW'
+      | 'MEDIUM'
+      | 'HIGH' =
+      'MEDIUM';
+
+    if (
+      prediction.chaosIndex >= 80 ||
+      steam?.explosive
+    ) {
+
+      volatility =
+        'HIGH';
+    }
+
+    else if (
+      prediction.chaosIndex <= 35
+    ) {
+
+      volatility =
+        'LOW';
+    }
+
+    // ======================================
+    // 🏁 RECOMMENDATION
+    // ======================================
+
+    let recommendation:
+      | 'AVOID'
+      | 'RISKY'
+      | 'GOOD'
+      | 'STRONG'
+      | 'ELITE' =
+      'RISKY';
+
+    if (
+      quantumScore >= 90
+    ) {
+
+      recommendation =
+        'ELITE';
+    }
+
+    else if (
+      quantumScore >= 80
+    ) {
+
+      recommendation =
+        'STRONG';
+    }
+
+    else if (
+      quantumScore >= 65
+    ) {
+
+      recommendation =
+        'GOOD';
+    }
+
+    else if (
+      quantumScore < 45
+    ) {
+
+      recommendation =
+        'AVOID';
+    }
+
+    // ======================================
+    // 🏁 RESULT
+    // ======================================
 
     return {
 
@@ -120,7 +332,30 @@ export class QuantumMarketEngine {
       quantumScore,
 
       elite:
-        quantumScore >= 85
+        quantumScore >= 85,
+
+      strong:
+        quantumScore >= 70,
+
+      weak:
+        quantumScore < 50,
+
+      marketDirection,
+
+      volatility,
+
+      recommendation
     };
+  }
+
+  // ======================================
+  // 🎯 MARKET PICK
+  // ======================================
+
+  static pickMarket(
+    prediction: FootballPrediction
+  ): Market {
+
+    return prediction.market;
   }
 }

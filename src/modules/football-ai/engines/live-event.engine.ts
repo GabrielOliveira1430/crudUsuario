@@ -47,6 +47,8 @@ export type LiveEvent = {
   confidence: number;
 
   timestamp: number;
+
+  scoreImpact: number;
 };
 
 // ======================================
@@ -54,6 +56,45 @@ export type LiveEvent = {
 // ======================================
 
 export class LiveEventEngine {
+
+  // ======================================
+  // EVENT FACTORY
+  // ======================================
+
+  private static createEvent(
+    type: LiveEventType,
+    severity:
+      | 'LOW'
+      | 'MEDIUM'
+      | 'HIGH'
+      | 'CRITICAL',
+    confidence: number,
+    message: string,
+    scoreImpact: number
+  ): LiveEvent {
+
+    return {
+
+      type,
+
+      severity,
+
+      confidence:
+        Number(
+          Math.min(
+            100,
+            Math.max(0, confidence)
+          ).toFixed(2)
+        ),
+
+      timestamp:
+        Date.now(),
+
+      message,
+
+      scoreImpact
+    };
+  }
 
   // ======================================
   // ANALYZE
@@ -82,23 +123,15 @@ export class LiveEventEngine {
       timeline.dangerLevel >= 85
     ) {
 
-      events.push({
-
-        type:
+      events.push(
+        this.createEvent(
           'EXTREME_PRESSURE',
-
-        severity:
           'CRITICAL',
-
-        confidence:
           timeline.dangerLevel,
-
-        timestamp:
-          Date.now(),
-
-        message:
-          'Pressão extrema detectada'
-      });
+          'Pressão extrema detectada',
+          15
+        )
+      );
     }
 
     // ======================================
@@ -109,23 +142,15 @@ export class LiveEventEngine {
       timeline.nextGoalProbability >= 80
     ) {
 
-      events.push({
-
-        type:
+      events.push(
+        this.createEvent(
           'HIGH_GOAL_PROBABILITY',
-
-        severity:
           'HIGH',
-
-        confidence:
           timeline.nextGoalProbability,
-
-        timestamp:
-          Date.now(),
-
-        message:
-          'Alta probabilidade de próximo gol'
-      });
+          'Alta probabilidade de próximo gol',
+          12
+        )
+      );
     }
 
     // ======================================
@@ -141,23 +166,15 @@ export class LiveEventEngine {
 
     ) {
 
-      events.push({
-
-        type:
+      events.push(
+        this.createEvent(
           'DEFENSIVE_COLLAPSE',
-
-        severity:
           'CRITICAL',
-
-        confidence:
           90,
-
-        timestamp:
-          Date.now(),
-
-        message:
-          'Possível colapso defensivo'
-      });
+          'Possível colapso defensivo',
+          18
+        )
+      );
     }
 
     // ======================================
@@ -169,23 +186,15 @@ export class LiveEventEngine {
       'UP'
     ) {
 
-      events.push({
-
-        type:
+      events.push(
+        this.createEvent(
           'MOMENTUM_SHIFT',
-
-        severity:
           'MEDIUM',
-
-        confidence:
           75,
-
-        timestamp:
-          Date.now(),
-
-        message:
-          'Momentum ofensivo crescente'
-      });
+          'Momentum ofensivo crescente',
+          8
+        )
+      );
     }
 
     // ======================================
@@ -196,23 +205,15 @@ export class LiveEventEngine {
       timeline.comebackChance >= 40
     ) {
 
-      events.push({
-
-        type:
+      events.push(
+        this.createEvent(
           'COMEBACK_SIGNAL',
-
-        severity:
           'HIGH',
-
-        confidence:
           timeline.comebackChance,
-
-        timestamp:
-          Date.now(),
-
-        message:
-          'Possível reação ou virada'
-      });
+          'Possível reação ou virada',
+          10
+        )
+      );
     }
 
     // ======================================
@@ -227,23 +228,15 @@ export class LiveEventEngine {
 
     ) {
 
-      events.push({
-
-        type:
+      events.push(
+        this.createEvent(
           'MATCH_DEAD',
-
-        severity:
           'LOW',
-
-        confidence:
           70,
-
-        timestamp:
-          Date.now(),
-
-        message:
-          'Partida sem intensidade'
-      });
+          'Partida sem intensidade',
+          -15
+        )
+      );
     }
 
     // ======================================
@@ -254,23 +247,15 @@ export class LiveEventEngine {
       timeline.volatility >= 30
     ) {
 
-      events.push({
-
-        type:
+      events.push(
+        this.createEvent(
           'VOLATILE_MATCH',
-
-        severity:
           'HIGH',
-
-        confidence:
           timeline.volatility,
-
-        timestamp:
-          Date.now(),
-
-        message:
-          'Partida altamente volátil'
-      });
+          'Partida altamente volátil',
+          6
+        )
+      );
     }
 
     // ======================================
@@ -285,23 +270,15 @@ export class LiveEventEngine {
 
     ) {
 
-      events.push({
-
-        type:
+      events.push(
+        this.createEvent(
           'ELITE_VALUE',
-
-        severity:
           'CRITICAL',
-
-        confidence:
           prediction.confidence,
-
-        timestamp:
-          Date.now(),
-
-        message:
-          'Elite value bet detectado'
-      });
+          'Elite value bet detectado',
+          20
+        )
+      );
     }
 
     // ======================================
@@ -316,26 +293,25 @@ export class LiveEventEngine {
 
     ) {
 
-      events.push({
-
-        type:
+      events.push(
+        this.createEvent(
           'TRAP_DETECTED',
-
-        severity:
           'HIGH',
-
-        confidence:
           prediction.risk,
-
-        timestamp:
-          Date.now(),
-
-        message:
-          'Possível armadilha detectada'
-      });
+          'Possível armadilha detectada',
+          -25
+        )
+      );
     }
 
-    return events;
+    // ======================================
+    // SORT
+    // ======================================
+
+    return events.sort(
+      (a, b) =>
+        b.scoreImpact - a.scoreImpact
+    );
   }
 
   // ======================================
@@ -355,6 +331,20 @@ export class LiveEventEngine {
 
         match:
           `${prediction.homeTeam} vs ${prediction.awayTeam}`,
+
+        totalEvents:
+          this.analyze(
+            prediction
+          ).length,
+
+        criticalEvents:
+          this.analyze(
+            prediction
+          ).filter(
+            e =>
+              e.severity ===
+              'CRITICAL'
+          ).length,
 
         events:
           this.analyze(

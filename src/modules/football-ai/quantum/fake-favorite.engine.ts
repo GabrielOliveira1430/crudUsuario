@@ -5,7 +5,7 @@ import type {
 } from '../../football/football.prediction.engine';
 
 // ======================================
-// ENGINE
+// 🧠 FAKE FAVORITE ENGINE (STABLE)
 // ======================================
 
 export class FakeFavoriteEngine {
@@ -14,21 +14,54 @@ export class FakeFavoriteEngine {
     prediction: FootballPrediction
   ) {
 
-    const suspicious =
+    let score = 0;
 
-      prediction.confidence < 65 &&
+    // ======================================
+    // 📉 BAIXA CONFIANÇA EM FAVORITO
+    // ======================================
 
-      prediction.fairOdd < 1.8;
+    if (prediction.confidence < 65) {
+      score += 30;
+    }
+
+    if (prediction.confidence < 55) {
+      score += 15;
+    }
+
+    // ======================================
+    // 💰 ODD MUITO BAIXA (FAVORITO FORÇADO)
+    // ======================================
+
+    if (prediction.fairOdd < 1.8) {
+      score += 25;
+    }
+
+    if (prediction.fairOdd < 1.5) {
+      score += 15;
+    }
+
+    // ======================================
+    // ⚖️ EDGE SUSPEITO
+    // ======================================
+
+    if (prediction.edge < 3) {
+      score += 10;
+    }
+
+    if (prediction.edge < 0) {
+      score += 10;
+    }
+
+    // ======================================
+    // 🚨 RESULTADO FINAL
+    // ======================================
+
+    const fakeSignal = score >= 40;
 
     return {
-
-      fakeFavorite:
-        suspicious,
-
-      dangerLevel:
-        suspicious
-          ? 'HIGH'
-          : 'LOW'
+      fakeSignal,
+      score,
+      dangerLevel: fakeSignal ? 'HIGH' : 'LOW'
     };
   }
 }

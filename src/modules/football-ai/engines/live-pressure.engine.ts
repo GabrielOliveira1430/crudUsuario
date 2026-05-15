@@ -4,6 +4,10 @@ import type {
   FootballMatch
 } from '../../football/football.provider';
 
+import {
+  footballTeamMemory
+} from '../../football/football.team.memory';
+
 // ======================================
 // TYPES
 // ======================================
@@ -42,6 +46,34 @@ export type PressureAnalysis = {
   confidence: number;
 
   reasons: string[];
+
+  pressureDifference: number;
+
+  matchRhythm: number;
+
+  fatigueIndex: number;
+
+  homeMomentum: number;
+
+  awayMomentum: number;
+
+  updatedAt: string;
+
+  // ======================================
+  // 🧠 NOVOS CAMPOS
+  // ======================================
+
+  homeExpectedGoals?: number;
+
+  awayExpectedGoals?: number;
+
+  tempoIndex?: number;
+
+  emotionalPressure?: number;
+
+  collapseRiskHome?: number;
+
+  collapseRiskAway?: number;
 };
 
 // ======================================
@@ -51,7 +83,46 @@ export type PressureAnalysis = {
 export class LivePressureEngine {
 
   // ======================================
-  // SINGLE MATCH
+  // NORMALIZE
+  // ======================================
+
+  private static normalize(
+    value: number,
+    min = 0,
+    max = 100
+  ) {
+
+    return Number(
+      (
+        Math.max(
+          min,
+          Math.min(max, value)
+        )
+      ).toFixed(2)
+    );
+  }
+
+  // ======================================
+  // SAFE
+  // ======================================
+
+  private static safe(
+    value: number,
+    fallback = 0
+  ) {
+
+    if (
+      Number.isNaN(value) ||
+      !Number.isFinite(value)
+    ) {
+      return fallback;
+    }
+
+    return value;
+  }
+
+  // ======================================
+  // ANALYZE
   // ======================================
 
   static analyze(
@@ -60,53 +131,118 @@ export class LivePressureEngine {
 
     const reasons: string[] = [];
 
+    const minute =
+      Number(
+        match.minute ?? 1
+      );
+
+    const homeGoals =
+      Number(
+        match.homeScore ?? 0
+      );
+
+    const awayGoals =
+      Number(
+        match.awayScore ?? 0
+      );
+
     // ======================================
-    // BASE VALUES
+    // TEAM MEMORY
+    // ======================================
+
+    const homeMemory =
+      footballTeamMemory.get(
+        match.homeTeam
+      );
+
+    const awayMemory =
+      footballTeamMemory.get(
+        match.awayTeam
+      );
+
+    // ======================================
+    // BASE PRESSURE
     // ======================================
 
     let homePressure =
-      Math.floor(
-        40 + Math.random() * 40
+
+      (
+        (homeMemory?.offensiveStrength ?? 50) * 0.35 +
+
+        (homeMemory?.momentum ?? 50) * 0.25 +
+
+        (homeMemory?.formScore ?? 50) * 0.2 +
+
+        (
+          (
+            homeMemory?.averageGoalsScored ?? 1
+          ) * 10
+        )
       );
 
     let awayPressure =
-      Math.floor(
-        40 + Math.random() * 40
+
+      (
+        (awayMemory?.offensiveStrength ?? 50) * 0.35 +
+
+        (awayMemory?.momentum ?? 50) * 0.25 +
+
+        (awayMemory?.formScore ?? 50) * 0.2 +
+
+        (
+          (
+            awayMemory?.averageGoalsScored ?? 1
+          ) * 10
+        )
       );
 
-    const minute =
-      Number(match.minute || 1);
-
-    const homeGoals =
-      Number(match.homeScore || 0);
-
-    const awayGoals =
-      Number(match.awayScore || 0);
-
     // ======================================
-    // LOSING TEAM PRESSURE
+    // LOSING BOOST
     // ======================================
 
-    if (homeGoals < awayGoals) {
+    if (
+      homeGoals <
+      awayGoals
+    ) {
 
-      homePressure += 20;
+      homePressure += 18;
 
       reasons.push(
-        `${match.homeTeam} está pressionando atrás do placar`
+        `${match.homeTeam} pressiona atrás do placar`
       );
     }
 
-    if (awayGoals < homeGoals) {
+    if (
+      awayGoals <
+      homeGoals
+    ) {
 
-      awayPressure += 20;
+      awayPressure += 18;
 
       reasons.push(
-        `${match.awayTeam} está pressionando atrás do placar`
+        `${match.awayTeam} pressiona atrás do placar`
       );
     }
 
     // ======================================
-    // LATE GAME BOOST
+    // DRAW MODE
+    // ======================================
+
+    if (
+      homeGoals ===
+      awayGoals
+    ) {
+
+      homePressure += 6;
+      awayPressure += 6;
+
+      reasons.push(
+        'Empate aumenta agressividade'
+      );
+    }
+
+    // ======================================
+    // FINAL GAME BOOST
     // ======================================
 
     if (minute >= 70) {
@@ -115,36 +251,92 @@ export class LivePressureEngine {
       awayPressure += 10;
 
       reasons.push(
-        'Alta intensidade no final da partida'
+        'Alta intensidade final'
       );
     }
 
-    // ======================================
-    // DRAW PRESSURE
-    // ======================================
-
-    if (homeGoals === awayGoals) {
+    if (minute >= 85) {
 
       homePressure += 8;
       awayPressure += 8;
 
       reasons.push(
-        'Jogo empatado aumenta agressividade'
+        'Fase crítica da partida'
       );
     }
 
     // ======================================
-    // LIMITS
+    // CLEAN SHEETS
+    // ======================================
+
+    if (
+      (homeMemory?.cleanSheets ?? 0) >
+
+      (homeMemory?.matches ?? 1) * 0.4
+    ) {
+
+      awayPressure -= 5;
+    }
+
+    if (
+      (awayMemory?.cleanSheets ?? 0) >
+
+      (awayMemory?.matches ?? 1) * 0.4
+    ) {
+
+      homePressure -= 5;
+    }
+
+    // ======================================
+    // FAILED TO SCORE
+    // ======================================
+
+    if (
+      (homeMemory?.failedToScore ?? 0) >
+
+      (homeMemory?.matches ?? 1) * 0.35
+    ) {
+
+      homePressure -= 6;
+    }
+
+    if (
+      (awayMemory?.failedToScore ?? 0) >
+
+      (awayMemory?.matches ?? 1) * 0.35
+    ) {
+
+      awayPressure -= 6;
+    }
+
+    // ======================================
+    // SAFE LIMITS
     // ======================================
 
     homePressure =
-      Math.min(100, homePressure);
+      this.normalize(
+        homePressure
+      );
 
     awayPressure =
-      Math.min(100, awayPressure);
+      this.normalize(
+        awayPressure
+      );
 
     // ======================================
-    // DOMINANT
+    // PRESSURE DIFFERENCE
+    // ======================================
+
+    const pressureDifference =
+      Number(
+        Math.abs(
+          homePressure -
+          awayPressure
+        ).toFixed(2)
+      );
+
+    // ======================================
+    // DOMINANT TEAM
     // ======================================
 
     let dominantTeam =
@@ -158,7 +350,7 @@ export class LivePressureEngine {
 
     if (
       homePressure >
-      awayPressure + 10
+      awayPressure + 8
     ) {
 
       dominantTeam =
@@ -168,9 +360,9 @@ export class LivePressureEngine {
         'HOME';
     }
 
-    if (
+    else if (
       awayPressure >
-      homePressure + 10
+      homePressure + 8
     ) {
 
       dominantTeam =
@@ -185,7 +377,7 @@ export class LivePressureEngine {
     // ======================================
 
     let nextGoalTeam =
-      'UNKNOWN';
+      'BALANCED';
 
     if (
       homePressure >
@@ -194,35 +386,81 @@ export class LivePressureEngine {
 
       nextGoalTeam =
         match.homeTeam;
+    }
 
-    } else if (
+    else if (
       awayPressure >
       homePressure
     ) {
 
       nextGoalTeam =
         match.awayTeam;
-
-    } else {
-
-      nextGoalTeam =
-        'BALANCED';
     }
+
+    // ======================================
+    // MATCH RHYTHM
+    // ======================================
+
+    const matchRhythm =
+      this.normalize(
+
+        (
+          homePressure +
+          awayPressure
+        ) / 2
+      );
+
+    // ======================================
+    // FATIGUE
+    // ======================================
+
+    const fatigueIndex =
+      this.normalize(
+
+        minute * 1.1,
+
+        0,
+        100
+      );
 
     // ======================================
     // GOAL PROBABILITY
     // ======================================
 
-    const goalProbability =
-      Math.min(
-        95,
+    let goalProbability =
 
-        Math.floor(
-          (
-            homePressure +
-            awayPressure
-          ) / 2
-        )
+      (
+        matchRhythm * 0.65 +
+
+        pressureDifference * 0.35
+      );
+
+    if (
+
+      homeGoals +
+      awayGoals >= 3
+
+    ) {
+
+      goalProbability += 6;
+
+      reasons.push(
+        'Jogo aberto ofensivamente'
+      );
+    }
+
+    if (
+      matchRhythm >= 75
+    ) {
+
+      goalProbability += 5;
+    }
+
+    goalProbability =
+      this.normalize(
+        goalProbability,
+        5,
+        95
       );
 
     // ======================================
@@ -235,26 +473,31 @@ export class LivePressureEngine {
       | 'HIGH'
       | 'EXTREME';
 
-    if (goalProbability >= 85) {
+    if (
+      goalProbability >= 85
+    ) {
 
       intensity =
         'EXTREME';
+    }
 
-    } else if (
+    else if (
       goalProbability >= 70
     ) {
 
       intensity =
         'HIGH';
+    }
 
-    } else if (
+    else if (
       goalProbability >= 55
     ) {
 
       intensity =
         'MEDIUM';
+    }
 
-    } else {
+    else {
 
       intensity =
         'LOW';
@@ -265,26 +508,29 @@ export class LivePressureEngine {
     // ======================================
 
     const momentumShift =
-      Math.abs(
-        homePressure -
-        awayPressure
-      ) >= 25;
 
-    if (momentumShift) {
+      pressureDifference >= 22;
+
+    if (
+      momentumShift
+    ) {
 
       reasons.push(
-        'Mudança forte de momentum detectada'
+        'Mudança forte de momentum'
       );
     }
 
     // ======================================
-    // DANGEROUS MATCH
+    // DANGEROUS
     // ======================================
 
     const dangerous =
+
       goalProbability >= 75;
 
-    if (dangerous) {
+    if (
+      dangerous
+    ) {
 
       reasons.push(
         'Alta probabilidade de gol'
@@ -296,18 +542,135 @@ export class LivePressureEngine {
     // ======================================
 
     const confidence =
-      Math.min(
-        95,
+      this.normalize(
 
-        Math.floor(
-          60 +
+        (
+          goalProbability * 0.6 +
+
+          pressureDifference * 0.4
+        ),
+
+        45,
+        95
+      );
+
+    // ======================================
+    // LOW INTENSITY
+    // ======================================
+
+    if (
+      goalProbability <= 40
+    ) {
+
+      reasons.push(
+        'Partida lenta'
+      );
+    }
+
+    // ======================================
+    // EXPECTED GOALS
+    // ======================================
+
+    const homeExpectedGoals =
+      Number(
+        (
           (
-            Math.abs(
-              homePressure -
-              awayPressure
-            ) / 2
+            (homeMemory?.averageGoalsScored ?? 1) * 0.65
+          ) +
+
+          (
+            (awayMemory?.averageGoalsConceded ?? 1) * 0.35
+          ) +
+
+          (
+            homePressure / 100
           )
+        ).toFixed(2)
+      );
+
+    const awayExpectedGoals =
+      Number(
+        (
+          (
+            (awayMemory?.averageGoalsScored ?? 1) * 0.65
+          ) +
+
+          (
+            (homeMemory?.averageGoalsConceded ?? 1) * 0.35
+          ) +
+
+          (
+            awayPressure / 100
+          )
+        ).toFixed(2)
+      );
+
+    // ======================================
+    // TEMPO INDEX
+    // ======================================
+
+    const tempoIndex =
+      this.normalize(
+
+        (
+          matchRhythm * 0.5 +
+
+          goalProbability * 0.3 +
+
+          pressureDifference * 0.2
         )
+      );
+
+    // ======================================
+    // EMOTIONAL PRESSURE
+    // ======================================
+
+    const emotionalPressure =
+      this.normalize(
+
+        (
+          pressureDifference * 0.5 +
+
+          fatigueIndex * 0.3 +
+
+          goalProbability * 0.2
+        )
+      );
+
+    // ======================================
+    // COLLAPSE RISK
+    // ======================================
+
+    const collapseRiskHome =
+      this.normalize(
+
+        (
+          fatigueIndex * 0.45 +
+
+          (
+            awayPressure -
+            homePressure
+          ) * 0.55
+        ),
+
+        0,
+        100
+      );
+
+    const collapseRiskAway =
+      this.normalize(
+
+        (
+          fatigueIndex * 0.45 +
+
+          (
+            homePressure -
+            awayPressure
+          ) * 0.55
+        ),
+
+        0,
+        100
       );
 
     // ======================================
@@ -343,22 +706,79 @@ export class LivePressureEngine {
       confidence,
 
       reasons,
+
+      pressureDifference,
+
+      matchRhythm,
+
+      fatigueIndex,
+
+      homeMomentum:
+        Number(
+          (
+            homeMemory?.momentum ?? 50
+          ).toFixed(2)
+        ),
+
+      awayMomentum:
+        Number(
+          (
+            awayMemory?.momentum ?? 50
+          ).toFixed(2)
+        ),
+
+      updatedAt:
+        new Date().toISOString(),
+
+      homeExpectedGoals:
+        this.safe(
+          homeExpectedGoals
+        ),
+
+      awayExpectedGoals:
+        this.safe(
+          awayExpectedGoals
+        ),
+
+      tempoIndex:
+        this.safe(
+          tempoIndex
+        ),
+
+      emotionalPressure:
+        this.safe(
+          emotionalPressure
+        ),
+
+      collapseRiskHome:
+        this.safe(
+          collapseRiskHome
+        ),
+
+      collapseRiskAway:
+        this.safe(
+          collapseRiskAway
+        )
     };
   }
 
   // ======================================
-  // MULTI MATCHES
+  // MULTI
   // ======================================
 
   static analyzeMany(
     matches: FootballMatch[]
   ) {
 
-    return matches.map(match =>
-      this.analyze(match)
+    return matches.map(
+      m => this.analyze(m)
     );
   }
 }
+
+// ======================================
+// SINGLETON
+// ======================================
 
 export const livePressureEngine =
   new LivePressureEngine();

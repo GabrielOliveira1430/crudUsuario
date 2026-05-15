@@ -1,5 +1,8 @@
 // src/modules/football/football.team.memory.ts
 
+import fs from 'fs';
+import path from 'path';
+
 import type {
   TeamForm
 } from '../football-ai/engines/form.engine';
@@ -11,6 +14,8 @@ import type {
 export type TeamMemory = {
 
   team: string;
+
+  matches: number;
 
   offensiveStrength: number;
 
@@ -41,8 +46,91 @@ export type TeamMemory = {
 
 class FootballTeamMemory {
 
+  private file = path.resolve(
+    process.cwd(),
+    'data/football-team-memory.json'
+  );
+
   private memory =
     new Map<string, TeamMemory>();
+
+  constructor() {
+
+    this.load();
+  }
+
+  // ======================================
+  // LOAD
+  // ======================================
+
+  private load() {
+
+    try {
+
+      if (!fs.existsSync(this.file)) {
+
+        return;
+      }
+
+      const raw =
+        fs.readFileSync(
+          this.file,
+          'utf-8'
+        );
+
+      const parsed:
+        TeamMemory[] =
+          JSON.parse(raw);
+
+      for (const item of parsed) {
+
+        this.memory.set(
+          item.team,
+          item
+        );
+      }
+
+      console.log(
+        `🧠 Team memory loaded: ${parsed.length} teams`
+      );
+
+    } catch (error) {
+
+      console.error(
+        '❌ Error loading football team memory',
+        error
+      );
+    }
+  }
+
+  // ======================================
+  // PERSIST
+  // ======================================
+
+  private persist() {
+
+    try {
+
+      const data =
+        JSON.stringify(
+          this.getAll(),
+          null,
+          2
+        );
+
+      fs.writeFileSync(
+        this.file,
+        data
+      );
+
+    } catch (error) {
+
+      console.error(
+        '❌ Error persisting football team memory',
+        error
+      );
+    }
+  }
 
   // ======================================
   // SAVE
@@ -52,51 +140,112 @@ class FootballTeamMemory {
     analysis: TeamForm
   ) {
 
+    if (!analysis?.team) {
+      return;
+    }
+
+    const current =
+      this.memory.get(
+        analysis.team
+      );
+
+    const updated: TeamMemory = {
+
+      team:
+        analysis.team,
+
+      matches:
+        analysis.matches ?? 0,
+
+      offensiveStrength:
+        Number(
+          (
+            analysis.offensiveStrength ?? 0
+          ).toFixed(2)
+        ),
+
+      defensiveStrength:
+        Number(
+          (
+            analysis.defensiveStrength ?? 0
+          ).toFixed(2)
+        ),
+
+      formScore:
+        Number(
+          (
+            analysis.formScore ?? 0
+          ).toFixed(2)
+        ),
+
+      consistency:
+        Number(
+          (
+            analysis.consistency ?? 0
+          ).toFixed(2)
+        ),
+
+      momentum:
+        Number(
+          (
+            analysis.momentum ?? 0
+          ).toFixed(2)
+        ),
+
+      averageGoalsScored:
+        Number(
+          (
+            analysis.averageGoals ?? 0
+          ).toFixed(2)
+        ),
+
+      averageGoalsConceded:
+        Number(
+          (
+            analysis.averageConceded ?? 0
+          ).toFixed(2)
+        ),
+
+      cleanSheets:
+        analysis.cleanSheets ?? 0,
+
+      failedToScore:
+        analysis.failedToScore ?? 0,
+
+      recentForm:
+        analysis.recentForm ?? [],
+
+      updatedAt:
+        Date.now()
+    };
+
     this.memory.set(
       analysis.team,
-
-      {
-        team:
-          analysis.team,
-
-        offensiveStrength:
-          analysis.offensiveStrength,
-
-        defensiveStrength:
-          analysis.defensiveStrength,
-
-        formScore:
-          analysis.formScore,
-
-        consistency:
-          analysis.consistency,
-
-        momentum:
-          analysis.momentum,
-
-        averageGoalsScored:
-          analysis.averageGoals,
-
-        averageGoalsConceded:
-          analysis.averageConceded,
-
-        cleanSheets:
-          analysis.cleanSheets,
-
-        failedToScore:
-          analysis.failedToScore,
-
-        recentForm:
-          analysis.recentForm,
-
-        updatedAt:
-          Date.now(),
-      }
+      updated
     );
 
-    console.log(
-      `🧠 Team memory updated: ${analysis.team}`
-    );
+    this.persist();
+
+    // ======================================
+    // LOG ONLY WHEN CHANGED
+    // ======================================
+
+    const changed =
+
+      !current ||
+
+      current.formScore !==
+        updated.formScore ||
+
+      current.momentum !==
+        updated.momentum;
+
+    if (changed) {
+
+      console.log(
+        `🧠 Team memory updated: ${analysis.team}`
+      );
+    }
   }
 
   // ======================================
@@ -107,9 +256,19 @@ class FootballTeamMemory {
     analyses: TeamForm[]
   ) {
 
+    if (
+      !Array.isArray(
+        analyses
+      )
+    ) {
+      return;
+    }
+
     for (const analysis of analyses) {
 
-      this.save(analysis);
+      this.save(
+        analysis
+      );
     }
 
     console.log(
@@ -126,8 +285,8 @@ class FootballTeamMemory {
   ): TeamMemory | null {
 
     return (
-      this.memory.get(team) ||
-      null
+      this.memory.get(team)
+      || null
     );
   }
 
@@ -139,14 +298,17 @@ class FootballTeamMemory {
     team: string
   ) {
 
-    return this.memory.has(team);
+    return this.memory.has(
+      team
+    );
   }
 
   // ======================================
   // GET ALL
   // ======================================
 
-  getAll(): TeamMemory[] {
+  getAll():
+    TeamMemory[] {
 
     return Array.from(
       this.memory.values()
@@ -165,6 +327,7 @@ class FootballTeamMemory {
 
       .sort(
         (a, b) =>
+
           b.offensiveStrength -
           a.offensiveStrength
       )
@@ -184,6 +347,7 @@ class FootballTeamMemory {
 
       .sort(
         (a, b) =>
+
           b.defensiveStrength -
           a.defensiveStrength
       )
@@ -203,6 +367,7 @@ class FootballTeamMemory {
 
       .sort(
         (a, b) =>
+
           b.momentum -
           a.momentum
       )
@@ -211,7 +376,7 @@ class FootballTeamMemory {
   }
 
   // ======================================
-  // WEAK DEFENSE
+  // WEAK DEFENSES
   // ======================================
 
   getWeakDefenses(
@@ -222,6 +387,7 @@ class FootballTeamMemory {
 
       .sort(
         (a, b) =>
+
           a.defensiveStrength -
           b.defensiveStrength
       )
@@ -241,10 +407,12 @@ class FootballTeamMemory {
 
       .sort(
         (a, b) =>
+
           (
             b.formScore +
             b.momentum
           ) -
+
           (
             a.formScore +
             a.momentum
@@ -255,12 +423,43 @@ class FootballTeamMemory {
   }
 
   // ======================================
+  // STALE TEAMS
+  // ======================================
+
+  getStaleTeams(
+    maxAgeMinutes = 180
+  ) {
+
+    const now =
+      Date.now();
+
+    return this.getAll()
+
+      .filter(team => {
+
+        const age =
+          now -
+          team.updatedAt;
+
+        return age >
+
+          (
+            maxAgeMinutes *
+            60 *
+            1000
+          );
+      });
+  }
+
+  // ======================================
   // CLEAR
   // ======================================
 
   clear() {
 
     this.memory.clear();
+
+    this.persist();
 
     console.log(
       '🧹 FootballTeamMemory limpo'

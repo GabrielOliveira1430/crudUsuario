@@ -2,9 +2,7 @@
 
 import { footballTeamMemory } from './football.team.memory';
 
-import {
-  LivePressureEngine
-} from '../../modules/football-ai/engines/live-pressure.engine';
+import { LivePressureEngine } from '../../modules/football-ai/engines/live-pressure.engine';
 
 import type {
   PressureAnalysis
@@ -12,7 +10,12 @@ import type {
 
 import type {
   FootballMatch
-} from './football.provider';
+} from './providers/football.types';
+
+import type {
+  Market,
+  MarketType
+} from '../football-ai/types/market.types';
 
 import {
   weightOptimizer
@@ -74,13 +77,19 @@ export type FootballPrediction = {
 
   recommendation: string;
 
-  market:
-    | 'HOME_WIN'
-    | 'AWAY_WIN'
-    | 'DRAW'
-    | 'OVER_1_5'
-    | 'OVER_2_5'
-    | 'LOW_CONFIDENCE';
+  market: Market;
+
+  expectedGoalsHome: number;
+
+  expectedGoalsAway: number;
+
+  matchIntensity:
+    | 'LOW'
+    | 'MEDIUM'
+    | 'HIGH'
+    | 'EXTREME';
+
+  chaosIndex: number;
 
   reasons: string[];
 
@@ -94,6 +103,48 @@ export type FootballPrediction = {
 // ======================================
 
 export class FootballPredictionEngine {
+
+  // ======================================
+  // HELPERS
+  // ======================================
+
+  private static safe(
+    value?: number,
+    fallback = 0
+  ): number {
+
+    if (
+      value === undefined ||
+      value === null ||
+      Number.isNaN(value) ||
+      !Number.isFinite(value)
+    ) {
+
+      return fallback;
+    }
+
+    return value;
+  }
+
+  private static normalizeScore(
+    score: number
+  ): number {
+
+    return Math.min(
+      100,
+      Math.max(0, score)
+    );
+  }
+
+  private static toFixed(
+    value: number,
+    decimals = 2
+  ): number {
+
+    return Number(
+      value.toFixed(decimals)
+    );
+  }
 
   // ======================================
   // SINGLE
@@ -114,31 +165,66 @@ export class FootballPredictionEngine {
       );
 
     // ======================================
-    // 🧠 LIVE PRESSURE
+    // LIVE PRESSURE
     // ======================================
 
-    const pressure =
+    const pressure: PressureAnalysis =
+
       LivePressureEngine.analyze(
         match
-      );
+      ) ?? {
+
+        homeTeam:
+          match.homeTeam,
+
+        awayTeam:
+          match.awayTeam,
+
+        homePressure: 50,
+
+        awayPressure: 50,
+
+        dominantTeam:
+          'BALANCED',
+
+        nextGoalTeam:
+          'BALANCED',
+
+        goalProbability: 50,
+
+        intensity:
+          'MEDIUM',
+
+        dangerous: false,
+
+        momentumShift: false,
+
+        attackingSide:
+          'BALANCED',
+
+        confidence: 50,
+
+        reasons: []
+      };
 
     // ======================================
-    // 🧠 DYNAMIC WEIGHTS
+    // WEIGHTS
     // ======================================
 
     const weights =
       weightOptimizer.getWeights();
 
     // ======================================
-    // 🧬 MATCH DNA
+    // DNA
     // ======================================
 
     const {
       homeDNA,
       awayDNA
-    } = MatchDNAEngine.build(
-      match
-    );
+    } =
+      MatchDNAEngine.build(
+        match
+      );
 
     const homeCollapse =
       CollapseDetector.analyze(
@@ -167,108 +253,82 @@ export class FootballPredictionEngine {
       );
 
     // ======================================
-    // 🛟 FALLBACK MODE
+    // FALLBACK
     // ======================================
 
-    if (!home || !away) {
+    if (
+      !home ||
+      !away
+    ) {
 
-      let randomConfidence =
-        Number(
-          (
-            55 + Math.random() * 25
-          ).toFixed(2)
-        );
+      let confidence =
+        55 + Math.random() * 20;
 
-      randomConfidence =
+      confidence =
         ConfidenceCalibrator
           .calibrate(
-            randomConfidence
+            confidence
           );
 
       const homeAdvantage =
-        pressure.homePressure >
+
+        pressure.homePressure >=
         pressure.awayPressure;
 
+      const prediction:
+        FootballPrediction['prediction'] =
+
+        homeAdvantage
+          ? 'HOME'
+          : 'AWAY';
+
       const winner =
+
         homeAdvantage
           ? match.homeTeam
           : match.awayTeam;
 
-      let market:
-        | 'HOME_WIN'
-        | 'AWAY_WIN'
-        | 'DRAW'
-        | 'OVER_1_5'
-        | 'OVER_2_5'
-        | 'LOW_CONFIDENCE';
+      let market: Market =
 
-      market =
-        pressure.goalProbability >= 75
+        pressure.goalProbability >= 78
           ? 'OVER_2_5'
           : 'OVER_1_5';
 
       const reasons = [
-        'Fallback AI prediction',
-        'Live pressure analysis',
-        ...pressure.reasons,
+
+        'Fallback AI mode',
+
+        ...(pressure.reasons || [])
       ];
 
-      // ======================================
-      // 🔥 CHAOS DETECTION
-      // ======================================
-
-      if (chaos.insaneMatch) {
+      if (
+        chaos.insaneMatch
+      ) {
 
         reasons.push(
           'Partida extremamente caótica'
         );
 
-        market = 'OVER_2_5';
+        market =
+          'OVER_2_5';
+
+        confidence += 3;
       }
 
-      // ======================================
-      // 💥 COLLAPSE
-      // ======================================
-
-      if (
-        awayCollapse.dangerous
-      ) {
-
-        reasons.push(
-          `${match.awayTeam} pode colapsar`
+      confidence =
+        Math.min(
+          95,
+          confidence
         );
-      }
 
-      if (
-        homeCollapse.dangerous
-      ) {
+      const fairOdd =
+        100 / confidence;
 
-        reasons.push(
-          `${match.homeTeam} pode colapsar`
-        );
-      }
+      const risk =
+        100 - confidence;
 
-      // ======================================
-      // 🔄 COMEBACK
-      // ======================================
-
-      if (
-        homeComeback.eliteComeback
-      ) {
-
-        reasons.push(
-          `${match.homeTeam} possui forte tendência de reação`
-        );
-      }
-
-      if (
-        awayComeback.eliteComeback
-      ) {
-
-        reasons.push(
-          `${match.awayTeam} possui forte tendência de reação`
-        );
-      }
+      const edge =
+        confidence - risk;
 
       return {
 
@@ -280,52 +340,64 @@ export class FootballPredictionEngine {
 
         winner,
 
-        prediction:
-          homeAdvantage
-            ? 'HOME'
-            : 'AWAY',
+        prediction,
 
         confidence:
-          randomConfidence,
+          this.toFixed(
+            confidence
+          ),
 
         fairOdd:
-          Number(
-            (
-              100 /
-              randomConfidence
-            ).toFixed(2)
+          this.toFixed(
+            fairOdd
           ),
 
         risk:
-          Number(
-            (
-              100 -
-              randomConfidence
-            ).toFixed(2)
+          this.toFixed(
+            risk
           ),
 
         edge:
-          Number(
-            (
-              randomConfidence - 50
-            ).toFixed(2)
+          this.toFixed(
+            edge
           ),
 
         recommendation:
-          randomConfidence >= 70
-            ? 'GOOD BET'
-            : 'RISKY BET',
+
+          confidence >= 78
+            ? 'STRONG BET'
+            : confidence >= 65
+              ? 'GOOD BET'
+              : 'RISKY BET',
 
         market,
 
+        expectedGoalsHome:
+          this.toFixed(
+            pressure.homePressure / 45
+          ),
+
+        expectedGoalsAway:
+          this.toFixed(
+            pressure.awayPressure / 45
+          ),
+
+        matchIntensity:
+          pressure.intensity,
+
+        chaosIndex:
+          this.toFixed(
+            chaos.chaosIndex
+          ),
+
         reasons,
 
-        pressure,
+        pressure
       };
     }
 
     // ======================================
-    // REAL AI
+    // REAL AI SCORE
     // ======================================
 
     let homeScore = 0;
@@ -338,51 +410,59 @@ export class FootballPredictionEngine {
     // ======================================
 
     homeScore +=
-      (home.offensiveStrength || 0) *
-      weights.offense;
+      this.safe(
+        home.offensiveStrength
+      ) * weights.offense;
 
     awayScore +=
-      (away.offensiveStrength || 0) *
-      weights.offense;
+      this.safe(
+        away.offensiveStrength
+      ) * weights.offense;
 
     // ======================================
     // DEFENSE
     // ======================================
 
     homeScore +=
-      (home.defensiveStrength || 0) *
-      weights.defense;
+      this.safe(
+        home.defensiveStrength
+      ) * weights.defense;
 
     awayScore +=
-      (away.defensiveStrength || 0) *
-      weights.defense;
+      this.safe(
+        away.defensiveStrength
+      ) * weights.defense;
 
     // ======================================
     // FORM
     // ======================================
 
     homeScore +=
-      (home.formScore || 0) *
-      weights.form;
+      this.safe(
+        home.formScore
+      ) * weights.form;
 
     awayScore +=
-      (away.formScore || 0) *
-      weights.form;
+      this.safe(
+        away.formScore
+      ) * weights.form;
 
     // ======================================
     // MOMENTUM
     // ======================================
 
     homeScore +=
-      (home.momentum || 0) *
-      weights.momentum;
+      this.safe(
+        home.momentum
+      ) * weights.momentum;
 
     awayScore +=
-      (away.momentum || 0) *
-      weights.momentum;
+      this.safe(
+        away.momentum
+      ) * weights.momentum;
 
     // ======================================
-    // LIVE PRESSURE
+    // PRESSURE
     // ======================================
 
     homeScore +=
@@ -394,7 +474,13 @@ export class FootballPredictionEngine {
       weights.pressure;
 
     // ======================================
-    // 🧬 DNA BOOSTS
+    // HOME ADVANTAGE
+    // ======================================
+
+    homeScore += 4;
+
+    // ======================================
+    // DNA
     // ======================================
 
     homeScore +=
@@ -416,7 +502,7 @@ export class FootballPredictionEngine {
       awayDNA.dominance * 0.3;
 
     // ======================================
-    // 💥 COLLAPSE DETECTION
+    // COLLAPSE
     // ======================================
 
     if (
@@ -424,10 +510,10 @@ export class FootballPredictionEngine {
     ) {
 
       reasons.push(
-        `${match.awayTeam} pode colapsar`
+        `${match.awayTeam} risco de colapso`
       );
 
-      homeScore += 15;
+      homeScore += 10;
     }
 
     if (
@@ -435,14 +521,14 @@ export class FootballPredictionEngine {
     ) {
 
       reasons.push(
-        `${match.homeTeam} pode colapsar`
+        `${match.homeTeam} risco de colapso`
       );
 
-      awayScore += 15;
+      awayScore += 10;
     }
 
     // ======================================
-    // 🔄 COMEBACK ENGINE
+    // COMEBACK
     // ======================================
 
     if (
@@ -450,10 +536,10 @@ export class FootballPredictionEngine {
     ) {
 
       reasons.push(
-        `${match.homeTeam} possui forte tendência de virada`
+        `${match.homeTeam} forte reação`
       );
 
-      homeScore += 8;
+      homeScore += 5;
     }
 
     if (
@@ -461,52 +547,47 @@ export class FootballPredictionEngine {
     ) {
 
       reasons.push(
-        `${match.awayTeam} possui forte tendência de virada`
+        `${match.awayTeam} forte reação`
       );
 
-      awayScore += 8;
+      awayScore += 5;
     }
 
     // ======================================
-    // REASONS
+    // CHAOS
     // ======================================
 
     if (
-      pressure.dominantTeam ===
-      match.homeTeam
+      chaos.insaneMatch
     ) {
 
       reasons.push(
-        `${match.homeTeam} domina a partida`
-      );
-    }
-
-    if (
-      pressure.dominantTeam ===
-      match.awayTeam
-    ) {
-
-      reasons.push(
-        `${match.awayTeam} domina a partida`
-      );
-    }
-
-    if (
-      pressure.goalProbability >= 75
-    ) {
-
-      reasons.push(
-        'Alta chance de gol'
+        'Jogo extremamente caótico'
       );
     }
 
     // ======================================
-    // DIFFERENCE
+    // NORMALIZE
     // ======================================
 
-    const difference =
+    homeScore =
+      this.normalizeScore(
+        homeScore
+      );
+
+    awayScore =
+      this.normalizeScore(
+        awayScore
+      );
+
+    // ======================================
+    // DIFF
+    // ======================================
+
+    const diff =
       Math.abs(
-        homeScore - awayScore
+        homeScore -
+        awayScore
       );
 
     // ======================================
@@ -514,20 +595,27 @@ export class FootballPredictionEngine {
     // ======================================
 
     let prediction:
-      | 'HOME'
-      | 'AWAY'
-      | 'DRAW';
+      FootballPrediction['prediction'];
 
-    if (difference < 15) {
+    if (
+      diff < 12
+    ) {
 
-      prediction = 'DRAW';
+      prediction =
+        'DRAW';
+
+    } else if (
+      homeScore >
+      awayScore
+    ) {
+
+      prediction =
+        'HOME';
 
     } else {
 
       prediction =
-        homeScore > awayScore
-          ? 'HOME'
-          : 'AWAY';
+        'AWAY';
     }
 
     // ======================================
@@ -535,124 +623,234 @@ export class FootballPredictionEngine {
     // ======================================
 
     const winner =
+
       prediction === 'HOME'
         ? match.homeTeam
+
         : prediction === 'AWAY'
-        ? match.awayTeam
-        : 'DRAW';
+          ? match.awayTeam
+          : 'DRAW';
 
     // ======================================
     // CONFIDENCE
     // ======================================
 
     let confidence =
-      Math.min(
-        95,
 
-        Number(
-          (
-            60 +
-            (
-              difference / 2
-            )
-          ).toFixed(2)
-        )
-      );
+      55 +
 
-    // ======================================
-    // 🧠 CALIBRATION
-    // ======================================
+      (diff * 0.7);
+
+    if (
+      prediction === 'DRAW'
+    ) {
+
+      confidence -= 8;
+    }
+
+    if (
+      chaos.insaneMatch
+    ) {
+
+      confidence -= 5;
+    }
 
     confidence =
       ConfidenceCalibrator
         .calibrate(
-          confidence
+          Math.min(
+            95,
+            confidence
+          )
         );
 
+    confidence =
+      Math.max(
+        35,
+        confidence
+      );
+
     // ======================================
-    // FAIR ODD
+    // FAIR ODD / RISK
     // ======================================
 
     const fairOdd =
-      Number(
-        (
-          100 / confidence
-        ).toFixed(2)
-      );
-
-    // ======================================
-    // RISK
-    // ======================================
+      100 / confidence;
 
     const risk =
-      Number(
-        (
-          100 - confidence
-        ).toFixed(2)
-      );
-
-    // ======================================
-    // EDGE
-    // ======================================
+      100 - confidence;
 
     const edge =
-      Number(
+      confidence - risk;
+
+    // ======================================
+    // EXPECTED GOALS
+    // ======================================
+
+    const expectedGoalsHome =
+      this.toFixed(
+
         (
-          confidence - risk
-        ).toFixed(2)
+          (
+            this.safe(
+              home.averageGoalsScored
+            ) * 0.65
+          ) +
+
+          (
+            this.safe(
+              away.averageGoalsConceded
+            ) * 0.35
+          ) +
+
+          (
+            pressure.homePressure / 100
+          )
+        )
+      );
+
+    const expectedGoalsAway =
+      this.toFixed(
+
+        (
+          (
+            this.safe(
+              away.averageGoalsScored
+            ) * 0.65
+          ) +
+
+          (
+            this.safe(
+              home.averageGoalsConceded
+            ) * 0.35
+          ) +
+
+          (
+            pressure.awayPressure / 100
+          )
+        )
       );
 
     // ======================================
     // MARKET
     // ======================================
 
-    let market:
-      | 'HOME_WIN'
-      | 'AWAY_WIN'
-      | 'DRAW'
-      | 'OVER_1_5'
-      | 'OVER_2_5'
-      | 'LOW_CONFIDENCE';
+    let market: Market;
+
+    const totalExpectedGoals =
+      expectedGoalsHome +
+      expectedGoalsAway;
 
     if (
-      pressure.goalProbability >= 80
+      totalExpectedGoals >= 3
     ) {
 
-      market = 'OVER_2_5';
+      market =
+        'OVER_2_5';
 
     } else if (
-      pressure.goalProbability >= 65
+      totalExpectedGoals >= 2
     ) {
 
-      market = 'OVER_1_5';
+      market =
+        'OVER_1_5';
+
+    } else if (
+      prediction === 'HOME'
+    ) {
+
+      market =
+        'HOME_WIN';
+
+    } else if (
+      prediction === 'AWAY'
+    ) {
+
+      market =
+        'AWAY_WIN';
 
     } else {
 
       market =
-        prediction === 'HOME'
-          ? 'HOME_WIN'
-          : prediction === 'AWAY'
-          ? 'AWAY_WIN'
-          : 'DRAW';
+        'DRAW';
     }
 
     // ======================================
-    // 🔥 CHAOS DETECTION
+    // CHAOS MARKET
     // ======================================
 
-    if (chaos.insaneMatch) {
+    if (
+      chaos.insaneMatch
+    ) {
+
+      market =
+        'OVER_2_5';
+    }
+
+    // ======================================
+    // LOW CONFIDENCE FILTER
+    // ======================================
+
+    if (
+      confidence < 52
+    ) {
+
+      market =
+        'LOW_CONFIDENCE';
+    }
+
+    // ======================================
+    // RECOMMENDATION
+    // ======================================
+
+    let recommendation =
+      'RISKY BET';
+
+    if (
+      confidence >= 82 &&
+      risk <= 18
+    ) {
+
+      recommendation =
+        'STRONG BET';
+
+    } else if (
+      confidence >= 68
+    ) {
+
+      recommendation =
+        'GOOD BET';
+    }
+
+    // ======================================
+    // EXTRA REASONS
+    // ======================================
+
+    if (
+      pressure.dangerous
+    ) {
 
       reasons.push(
-        'Partida extremamente caótica'
+        'Alta pressão ofensiva'
       );
+    }
 
-      market = 'OVER_2_5';
+    if (
+      pressure.momentumShift
+    ) {
 
-      confidence =
-        Math.min(
-          99,
-          confidence + 5
-        );
+      reasons.push(
+        'Mudança de momentum'
+      );
+    }
+
+    if (
+      totalExpectedGoals >= 3
+    ) {
+
+      reasons.push(
+        'Alta expectativa de gols'
+      );
     }
 
     // ======================================
@@ -671,29 +869,51 @@ export class FootballPredictionEngine {
 
       prediction,
 
-      confidence,
+      confidence:
+        this.toFixed(
+          confidence
+        ),
 
-      fairOdd,
+      fairOdd:
+        this.toFixed(
+          fairOdd
+        ),
 
-      risk,
+      risk:
+        this.toFixed(
+          risk
+        ),
 
-      edge,
+      edge:
+        this.toFixed(
+          edge
+        ),
 
-      recommendation:
-        confidence >= 80
-          ? 'STRONG BET'
-          : confidence >= 65
-          ? 'GOOD BET'
-          : 'RISKY BET',
+      recommendation,
 
       market,
 
+      expectedGoalsHome,
+
+      expectedGoalsAway,
+
+      matchIntensity:
+        pressure.intensity,
+
+      chaosIndex:
+        this.toFixed(
+          chaos.chaosIndex
+        ),
+
       reasons: [
-        ...reasons,
-        ...pressure.reasons,
+
+        ...new Set([
+          ...reasons,
+          ...(pressure.reasons || [])
+        ])
       ],
 
-      pressure,
+      pressure
     };
   }
 
@@ -705,11 +925,30 @@ export class FootballPredictionEngine {
     matches: FootballMatch[]
   ): FootballPrediction[] {
 
-    return matches.map(match =>
-      this.single(match)
-    );
+    if (
+      !Array.isArray(matches)
+    ) {
+
+      return [];
+    }
+
+    return matches
+
+      .map(match =>
+        this.single(match)
+      )
+
+      .sort(
+        (a, b) =>
+          b.confidence -
+          a.confidence
+      );
   }
 }
+
+// ======================================
+// SINGLETON
+// ======================================
 
 export const footballPredictionEngine =
   new FootballPredictionEngine();

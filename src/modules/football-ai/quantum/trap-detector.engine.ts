@@ -9,59 +9,71 @@ import type {
 } from './smart-money-tracker';
 
 // ======================================
-// ENGINE
+// 🧠 TRAP DETECTOR ENGINE (STABLE)
 // ======================================
 
 export class TrapDetectorEngine {
 
   static analyze(
-
     prediction: FootballPrediction,
-
     smartMoney: SmartMoneyFlow
   ) {
 
     let trapScore = 0;
 
     // ======================================
-    // LOW AI CONFIDENCE
+    // 📉 LOW CONFIDENCE ZONE
     // ======================================
 
-    if (
-      prediction.confidence < 60
-    ) {
-
-      trapScore += 25;
-    }
-
-    // ======================================
-    // SUSPICIOUS MONEY
-    // ======================================
-
-    if (
-      smartMoney.suspicious
-    ) {
-
-      trapScore += 40;
-    }
-
-    // ======================================
-    // MARKET EDGE
-    // ======================================
-
-    if (
-      prediction.edge < 5
-    ) {
-
+    if (prediction.confidence < 60) {
       trapScore += 20;
     }
 
+    if (prediction.confidence < 50) {
+      trapScore += 10;
+    }
+
+    // ======================================
+    // 💰 SMART MONEY WARNING
+    // ======================================
+
+    if (smartMoney.suspicious) {
+      trapScore += 35;
+    }
+
+    if (smartMoney.institutionalPressure >= 85) {
+      trapScore += 10;
+    }
+
+    // ======================================
+    // ⚖️ MARKET EDGE FRACO
+    // ======================================
+
+    if (prediction.edge < 5) {
+      trapScore += 15;
+    }
+
+    if (prediction.edge < 0) {
+      trapScore += 10;
+    }
+
+    // ======================================
+    // 🎯 EDGE MUITO ALTO (SINAL ARTIFICIAL)
+    // ======================================
+
+    if (prediction.edge > 30) {
+      trapScore += 10;
+    }
+
+    // ======================================
+    // 🚨 RESULTADO FINAL
+    // ======================================
+
+    const dangerous = trapScore >= 55;
+
     return {
-
       trapScore,
-
-      dangerous:
-        trapScore >= 60
+      dangerous
     };
   }
 }

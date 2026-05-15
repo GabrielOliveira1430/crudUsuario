@@ -13,7 +13,7 @@ import type {
 } from './live-pressure.engine';
 
 // ======================================
-// TYPES
+// 💰 TYPES
 // ======================================
 
 export type ValueBet = {
@@ -57,13 +57,33 @@ export type ValueBet = {
 };
 
 // ======================================
-// ENGINE
+// 🧠 VALUE BET ENGINE (STABLE)
 // ======================================
 
 export class ValueBetEngine {
 
   // ======================================
-  // SINGLE ANALYSIS
+  // 🎯 SAFE NUMBER
+  // ======================================
+
+  private static safe(
+    value: number,
+    fallback = 0
+  ): number {
+
+    if (
+      Number.isNaN(value) ||
+      !Number.isFinite(value)
+    ) {
+
+      return fallback;
+    }
+
+    return value;
+  }
+
+  // ======================================
+  // 🎯 SINGLE ANALYSIS
   // ======================================
 
   static analyze(
@@ -75,86 +95,125 @@ export class ValueBetEngine {
     const reasons: string[] = [];
 
     // ======================================
-    // BASE PROBABILITY
+    // 📊 PROBABILITY
     // ======================================
 
     const probability =
-      prediction.confidence;
+      Math.max(
+        1,
+        Math.min(
+          95,
+          this.safe(
+            prediction.confidence,
+            50
+          )
+        )
+      );
 
     // ======================================
-    // IMPLIED ODDS
+    // 💰 IMPLIED PROBABILITY
     // ======================================
+
+    const fairOdd =
+      Math.max(
+        1.01,
+        this.safe(
+          prediction.fairOdd,
+          2
+        )
+      );
 
     const impliedProbability =
-      100 / prediction.fairOdd;
+      Number(
+        (
+          100 / fairOdd
+        ).toFixed(2)
+      );
 
     // ======================================
-    // BASE EDGE
+    // ⚖️ BASE EDGE
     // ======================================
 
     let edge =
-      probability - impliedProbability;
+      probability -
+      impliedProbability;
 
     // ======================================
-    // SMART MONEY BOOST
+    // 💸 SMART MONEY BOOST
     // ======================================
 
-    if (smartMoney?.valueDetected) {
-
-      edge += 8;
-
-      reasons.push(
-        'Smart money confirmando direção'
-      );
-    }
-
-    if (smartMoney?.isTrap) {
-
-      edge -= 15;
-
-      reasons.push(
-        'Possível armadilha de mercado'
-      );
-    }
-
-    // ======================================
-    // PRESSURE BOOST
-    // ======================================
-
-    if (pressure?.dangerous) {
+    if (
+      smartMoney?.valueDetected
+    ) {
 
       edge += 6;
 
       reasons.push(
-        'Alta pressão ofensiva LIVE'
+        'Smart money alinhado'
       );
     }
 
-    if (pressure?.momentumShift) {
+    if (
+      smartMoney?.isTrap
+    ) {
 
-      edge += 4;
+      edge -= 12;
 
       reasons.push(
-        'Mudança de momentum detectada'
+        'Possível trap de mercado'
       );
     }
 
     // ======================================
-    // FINAL EDGE LIMIT
+    // 🔥 LIVE PRESSURE
+    // ======================================
+
+    if (
+      pressure?.dangerous
+    ) {
+
+      edge += 5;
+
+      reasons.push(
+        'Alta pressão ofensiva'
+      );
+    }
+
+    if (
+      pressure?.momentumShift
+    ) {
+
+      edge += 3;
+
+      reasons.push(
+        'Momentum agressivo detectado'
+      );
+    }
+
+    // ======================================
+    // 📉 NORMALIZA EDGE
     // ======================================
 
     edge =
-      Number(edge.toFixed(2));
+      Number(
+        Math.max(
+          -50,
+          Math.min(
+            50,
+            edge
+          )
+        ).toFixed(2)
+      );
 
     // ======================================
-    // VALUE CHECK
+    // ✅ VALUE BET
     // ======================================
 
     const valueBet =
       edge >= 5;
 
     // ======================================
-    // STRENGTH
+    // 💪 STRENGTH
     // ======================================
 
     let strength:
@@ -163,25 +222,35 @@ export class ValueBetEngine {
       | 'STRONG'
       | 'ELITE';
 
-    if (edge >= 15) {
+    if (edge >= 18) {
 
       strength = 'ELITE';
 
-    } else if (edge >= 10) {
+    }
+
+    else if (
+      edge >= 12
+    ) {
 
       strength = 'STRONG';
 
-    } else if (edge >= 5) {
+    }
+
+    else if (
+      edge >= 5
+    ) {
 
       strength = 'MEDIUM';
 
-    } else {
+    }
+
+    else {
 
       strength = 'WEAK';
     }
 
     // ======================================
-    // RISK
+    // ⚠️ RISK
     // ======================================
 
     const risk =
@@ -192,19 +261,20 @@ export class ValueBetEngine {
       );
 
     // ======================================
-    // FINAL SCORE
+    // 🧠 FINAL SCORE
     // ======================================
 
     const finalScore =
       Number(
         (
-          edge * 2 +
-          probability * 0.3
+          (edge * 1.8) +
+          (probability * 0.35) -
+          (risk * 0.15)
         ).toFixed(2)
       );
 
     // ======================================
-    // RECOMMENDATION
+    // 🎯 RECOMMENDATION
     // ======================================
 
     let recommendation:
@@ -212,18 +282,71 @@ export class ValueBetEngine {
       | 'WATCH'
       | 'AVOID';
 
-    if (valueBet && strength === 'ELITE') {
+    if (
 
-      recommendation = 'TAKE';
+      valueBet &&
 
-    } else if (valueBet) {
+      (
+        strength === 'ELITE' ||
+        strength === 'STRONG'
+      )
 
-      recommendation = 'WATCH';
+    ) {
 
-    } else {
+      recommendation =
+        'TAKE';
 
-      recommendation = 'AVOID';
     }
+
+    else if (
+      valueBet
+    ) {
+
+      recommendation =
+        'WATCH';
+
+    }
+
+    else {
+
+      recommendation =
+        'AVOID';
+    }
+
+    // ======================================
+    // AUTO REASONS
+    // ======================================
+
+    if (
+      probability >= 75
+    ) {
+
+      reasons.push(
+        'Alta confiança estatística'
+      );
+    }
+
+    if (
+      edge >= 10
+    ) {
+
+      reasons.push(
+        'Edge acima da média'
+      );
+    }
+
+    if (
+      prediction.market === 'OVER_2_5'
+    ) {
+
+      reasons.push(
+        'Tendência ofensiva forte'
+      );
+    }
+
+    // ======================================
+    // 📦 RESULT
+    // ======================================
 
     return {
 
@@ -242,7 +365,10 @@ export class ValueBetEngine {
       market:
         prediction.market,
 
-      probability,
+      probability:
+        Number(
+          probability.toFixed(2)
+        ),
 
       impliedProbability,
 
@@ -255,29 +381,55 @@ export class ValueBetEngine {
       risk,
 
       confidence:
-        prediction.confidence,
+        Number(
+          prediction.confidence.toFixed(2)
+        ),
 
       finalScore,
 
       recommendation,
 
-      reasons,
+      reasons
     };
   }
 
   // ======================================
-  // MULTI ANALYSIS
+  // 🚀 MULTI ANALYSIS
   // ======================================
 
   static analyzeMany(
     predictions: FootballPrediction[]
   ): ValueBet[] {
 
-    return predictions.map(p =>
-      this.analyze(p)
-    );
+    if (
+      !Array.isArray(
+        predictions
+      )
+    ) {
+
+      return [];
+    }
+
+    return predictions
+
+      .map(
+        prediction =>
+          this.analyze(
+            prediction
+          )
+      )
+
+      .sort(
+        (a, b) =>
+          b.finalScore -
+          a.finalScore
+      );
   }
 }
+
+// ======================================
+// SINGLETON
+// ======================================
 
 export const valueBetEngine =
   new ValueBetEngine();

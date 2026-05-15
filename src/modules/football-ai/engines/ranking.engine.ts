@@ -40,6 +40,29 @@ export type RankedMatch = {
   recommendation: string;
 
   reasons: string[];
+
+  quantumScore: number;
+
+  eventScore: number;
+
+  pressureScore: number;
+
+  volatilityScore: number;
+
+  safeEntry: boolean;
+
+  trend:
+    | 'BULLISH'
+    | 'BEARISH'
+    | 'NEUTRAL';
+
+  expectedGoals: number;
+
+  dangerLevel:
+    | 'LOW'
+    | 'MEDIUM'
+    | 'HIGH'
+    | 'EXTREME';
 };
 
 // ======================================
@@ -82,10 +105,13 @@ export class RankingEngine {
           const stabilityIndex =
             Number(
               (
-                100 -
+                Math.max(
+                  0,
+                  100 -
 
-                (
-                  item.volatilityScore * 0.7
+                  (
+                    item.volatilityScore * 0.7
+                  )
                 )
               ).toFixed(2)
             );
@@ -121,6 +147,96 @@ export class RankingEngine {
           } else {
 
             priority =
+              'LOW';
+          }
+
+          // ==================================
+          // SAFE ENTRY
+          // ==================================
+
+          const safeEntry =
+
+            item.quantumScore >= 75 &&
+
+            item.riskLevel === 'LOW';
+
+          // ==================================
+          // TREND
+          // ==================================
+
+          let trend:
+            | 'BULLISH'
+            | 'BEARISH'
+            | 'NEUTRAL';
+
+          if (
+            item.pressureScore >= 75
+          ) {
+
+            trend = 'BULLISH';
+
+          } else if (
+            item.pressureScore <= 40
+          ) {
+
+            trend = 'BEARISH';
+
+          } else {
+
+            trend = 'NEUTRAL';
+          }
+
+          // ==================================
+          // EXPECTED GOALS
+          // ==================================
+
+          const expectedGoals =
+            Number(
+              (
+                (
+                  item.pressureScore / 35
+                ) +
+
+                (
+                  item.eventScore / 80
+                )
+              ).toFixed(2)
+            );
+
+          // ==================================
+          // DANGER LEVEL
+          // ==================================
+
+          let dangerLevel:
+            | 'LOW'
+            | 'MEDIUM'
+            | 'HIGH'
+            | 'EXTREME';
+
+          if (
+            item.volatilityScore >= 85
+          ) {
+
+            dangerLevel =
+              'EXTREME';
+
+          } else if (
+            item.volatilityScore >= 65
+          ) {
+
+            dangerLevel =
+              'HIGH';
+
+          } else if (
+            item.volatilityScore >= 40
+          ) {
+
+            dangerLevel =
+              'MEDIUM';
+
+          } else {
+
+            dangerLevel =
               'LOW';
           }
 
@@ -178,6 +294,40 @@ export class RankingEngine {
               'AVOID';
           }
 
+          // ==================================
+          // REASONS
+          // ==================================
+
+          const reasons = [
+            ...item.reasons
+          ];
+
+          if (safeEntry) {
+
+            reasons.push(
+              'Entrada considerada segura pelo ranking'
+            );
+          }
+
+          if (
+            trend === 'BULLISH'
+          ) {
+
+            reasons.push(
+              'Pressão ofensiva crescente'
+            );
+          }
+
+          if (
+            dangerLevel ===
+            'EXTREME'
+          ) {
+
+            reasons.push(
+              'Alta volatilidade detectada'
+            );
+          }
+
           return {
 
             rank: 0,
@@ -208,8 +358,27 @@ export class RankingEngine {
 
             recommendation,
 
-            reasons:
-              item.reasons
+            reasons,
+
+            quantumScore:
+              item.quantumScore,
+
+            eventScore:
+              item.eventScore,
+
+            pressureScore:
+              item.pressureScore,
+
+            volatilityScore:
+              item.volatilityScore,
+
+            safeEntry,
+
+            trend,
+
+            expectedGoals,
+
+            dangerLevel
           };
         }
       );
@@ -219,8 +388,22 @@ export class RankingEngine {
     // ======================================
 
     ranked.sort(
-      (a, b) =>
-        b.score - a.score
+      (a, b) => {
+
+        if (
+          b.score !== a.score
+        ) {
+
+          return (
+            b.score - a.score
+          );
+        }
+
+        return (
+          b.heatIndex -
+          a.heatIndex
+        );
+      }
     );
 
     // ======================================
@@ -257,6 +440,63 @@ export class RankingEngine {
           item.priority ===
             'HIGH'
       )
+      .slice(0, limit);
+  }
+
+  // ======================================
+  // SAFE ENTRIES
+  // ======================================
+
+  static safeEntries(
+    ranked: RankedMatch[],
+    limit = 5
+  ) {
+
+    return ranked
+      .filter(
+        item =>
+          item.safeEntry
+      )
+      .slice(0, limit);
+  }
+
+  // ======================================
+  // HOT MATCHES
+  // ======================================
+
+  static hotMatches(
+    ranked: RankedMatch[],
+    limit = 5
+  ) {
+
+    return ranked
+
+      .sort(
+        (a, b) =>
+          b.heatIndex -
+          a.heatIndex
+      )
+
+      .slice(0, limit);
+  }
+
+  // ======================================
+  // EXTREME VOLATILITY
+  // ======================================
+
+  static chaosMatches(
+    ranked: RankedMatch[],
+    limit = 5
+  ) {
+
+    return ranked
+
+      .filter(
+        item =>
+          item.dangerLevel ===
+          'EXTREME'
+      )
+
       .slice(0, limit);
   }
 }

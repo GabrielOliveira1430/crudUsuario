@@ -27,7 +27,12 @@ export type DynamicWeights = {
 
 class WeightOptimizer {
 
-  private weights: DynamicWeights = {
+  // ======================================
+  // BASE WEIGHTS
+  // ======================================
+
+  private readonly baseWeights:
+    DynamicWeights = {
 
     offense: 1,
 
@@ -41,6 +46,107 @@ class WeightOptimizer {
   };
 
   // ======================================
+  // CURRENT WEIGHTS
+  // ======================================
+
+  private weights:
+    DynamicWeights = {
+
+    offense: 1,
+
+    defense: 1,
+
+    momentum: 2,
+
+    pressure: 1.5,
+
+    form: 1
+  };
+
+  // ======================================
+  // CLAMP
+  // ======================================
+
+  private clamp(
+    value: number,
+    min: number,
+    max: number
+  ) {
+
+    return Math.min(
+      max,
+      Math.max(min, value)
+    );
+  }
+
+  // ======================================
+  // NORMALIZE
+  // ======================================
+
+  private normalize() {
+
+    this.weights.offense =
+      Number(
+        this.clamp(
+          this.weights.offense,
+          0.5,
+          5
+        ).toFixed(2)
+      );
+
+    this.weights.defense =
+      Number(
+        this.clamp(
+          this.weights.defense,
+          0.5,
+          5
+        ).toFixed(2)
+      );
+
+    this.weights.momentum =
+      Number(
+        this.clamp(
+          this.weights.momentum,
+          0.5,
+          5
+        ).toFixed(2)
+      );
+
+    this.weights.pressure =
+      Number(
+        this.clamp(
+          this.weights.pressure,
+          0.5,
+          5
+        ).toFixed(2)
+      );
+
+    this.weights.form =
+      Number(
+        this.clamp(
+          this.weights.form,
+          0.5,
+          5
+        ).toFixed(2)
+      );
+  }
+
+  // ======================================
+  // RESET
+  // ======================================
+
+  reset() {
+
+    this.weights = {
+      ...this.baseWeights
+    };
+
+    console.log(
+      '🧠 Pesos resetados'
+    );
+  }
+
+  // ======================================
   // OPTIMIZE
   // ======================================
 
@@ -49,41 +155,115 @@ class WeightOptimizer {
     const stats =
       learningMemory.stats();
 
+    const accuracy =
+      Number(
+        stats?.accuracy || 0
+      );
+
+    const total =
+      Number(
+        stats?.total || 0
+      );
+
     // ======================================
-    // IA EVOLUTIVA
+    // PROTEÇÃO
     // ======================================
 
-    if (stats.accuracy >= 70) {
+    if (total < 5) {
 
-      this.weights.pressure += 0.1;
+      this.normalize();
 
-      this.weights.momentum += 0.1;
+      return this.weights;
     }
 
-    if (stats.accuracy < 55) {
+    // ======================================
+    // ELITE MODE
+    // ======================================
+
+    if (accuracy >= 80) {
+
+      this.weights.pressure += 0.15;
+
+      this.weights.momentum += 0.12;
+
+      this.weights.offense += 0.08;
+    }
+
+    // ======================================
+    // GOOD MODE
+    // ======================================
+
+    else if (accuracy >= 70) {
+
+      this.weights.pressure += 0.08;
+
+      this.weights.momentum += 0.08;
+    }
+
+    // ======================================
+    // BAD MODE
+    // ======================================
+
+    else if (accuracy < 55) {
 
       this.weights.defense += 0.2;
 
-      this.weights.form += 0.1;
+      this.weights.form += 0.12;
+
+      this.weights.pressure -= 0.08;
     }
 
     // ======================================
-    // LIMITS
+    // VERY BAD MODE
     // ======================================
 
-    this.weights.pressure =
-      Math.min(
-        5,
-        this.weights.pressure
-      );
+    if (accuracy < 45) {
 
-    this.weights.momentum =
-      Math.min(
-        5,
-        this.weights.momentum
-      );
+      this.weights.defense += 0.15;
 
-    return this.weights;
+      this.weights.form += 0.15;
+
+      this.weights.offense -= 0.05;
+
+      this.weights.momentum -= 0.05;
+    }
+
+    // ======================================
+    // NORMALIZE
+    // ======================================
+
+    this.normalize();
+
+    console.log(
+      `🧠 Pesos otimizados | accuracy=${accuracy}%`
+    );
+
+    return {
+      ...this.weights
+    };
+  }
+
+  // ======================================
+  // MANUAL UPDATE
+  // ======================================
+
+  setWeights(
+    partial:
+      Partial<DynamicWeights>
+  ) {
+
+    this.weights = {
+
+      ...this.weights,
+
+      ...partial
+    };
+
+    this.normalize();
+
+    console.log(
+      '⚙️ Pesos atualizados manualmente'
+    );
   }
 
   // ======================================
@@ -92,7 +272,9 @@ class WeightOptimizer {
 
   getWeights() {
 
-    return this.weights;
+    return {
+      ...this.weights
+    };
   }
 }
 

@@ -12,6 +12,8 @@ export type TimelineSnapshot = {
 
   timestamp: number;
 
+  minute?: number;
+
   homePressure: number;
 
   awayPressure: number;
@@ -19,6 +21,26 @@ export type TimelineSnapshot = {
   goalProbability: number;
 
   dangerous: boolean;
+
+  dominantTeam: string;
+
+  intensity:
+    | 'LOW'
+    | 'MEDIUM'
+    | 'HIGH'
+    | 'EXTREME';
+
+  pressureDifference: number;
+
+  matchRhythm: number;
+
+  homeMomentum?: number;
+
+  awayMomentum?: number;
+
+  tempoIndex?: number;
+
+  emotionalPressure?: number;
 };
 
 export type MatchTimelineAnalysis = {
@@ -49,7 +71,35 @@ export type MatchTimelineAnalysis = {
 
   fatigueIndex: number;
 
+  averagePressure: number;
+
+  rhythmScore: number;
+
+  stabilityScore: number;
+
+  explosiveMoments: number;
+
   snapshots: TimelineSnapshot[];
+
+  updatedAt: string;
+
+  // ======================================
+  // 🧠 NOVOS CAMPOS
+  // ======================================
+
+  averageGoalProbability?: number;
+
+  emotionalIndex?: number;
+
+  accelerationIndex?: number;
+
+  dominanceScoreHome?: number;
+
+  dominanceScoreAway?: number;
+
+  chaosLevel?: number;
+
+  trendConfidence?: number;
 };
 
 // ======================================
@@ -57,10 +107,6 @@ export type MatchTimelineAnalysis = {
 // ======================================
 
 export class MatchTimelineEngine {
-
-  // ======================================
-  // MEMORY
-  // ======================================
 
   private static memory =
     new Map<
@@ -71,6 +117,26 @@ export class MatchTimelineEngine {
   private static MAX_HISTORY = 20;
 
   // ======================================
+  // SAFE
+  // ======================================
+
+  private static safe(
+    value: number,
+    min = 0,
+    max = 100
+  ) {
+
+    return Number(
+      (
+        Math.max(
+          min,
+          Math.min(max, value)
+        )
+      ).toFixed(2)
+    );
+  }
+
+  // ======================================
   // ANALYZE
   // ======================================
 
@@ -79,40 +145,58 @@ export class MatchTimelineEngine {
     pressure: PressureAnalysis
   ): MatchTimelineAnalysis {
 
-    // ======================================
-    // SNAPSHOT
-    // ======================================
-
-    const snapshot: TimelineSnapshot = {
+    const snapshot:
+      TimelineSnapshot = {
 
       timestamp:
         Date.now(),
 
+      minute:
+        pressure.fatigueIndex,
+
       homePressure:
-        pressure.homePressure,
+        pressure.homePressure ?? 0,
 
       awayPressure:
-        pressure.awayPressure,
+        pressure.awayPressure ?? 0,
 
       goalProbability:
-        pressure.goalProbability,
+        pressure.goalProbability ?? 0,
 
       dangerous:
-        pressure.dangerous
+        !!pressure.dangerous,
+
+      dominantTeam:
+        pressure.dominantTeam,
+
+      intensity:
+        pressure.intensity,
+
+      pressureDifference:
+        pressure.pressureDifference ?? 0,
+
+      matchRhythm:
+        pressure.matchRhythm ?? 0,
+
+      homeMomentum:
+        pressure.homeMomentum ?? 50,
+
+      awayMomentum:
+        pressure.awayMomentum ?? 50,
+
+      tempoIndex:
+        pressure.tempoIndex ?? 50,
+
+      emotionalPressure:
+        pressure.emotionalPressure ?? 50
     };
 
-    // ======================================
-    // HISTORY
-    // ======================================
-
     const history =
-      this.memory.get(matchId) || [];
+      this.memory.get(
+        matchId
+      ) ?? [];
 
     history.push(snapshot);
-
-    // ======================================
-    // LIMIT
-    // ======================================
 
     const limited =
       history.slice(
@@ -125,10 +209,15 @@ export class MatchTimelineEngine {
     );
 
     // ======================================
-    // SAFE
+    // INITIAL
     // ======================================
 
-    if (limited.length < 2) {
+    if (
+      limited.length < 2
+    ) {
+
+      const base =
+        pressure.goalProbability ?? 0;
 
       return {
 
@@ -144,23 +233,66 @@ export class MatchTimelineEngine {
         volatility: 0,
 
         dangerLevel:
-          pressure.goalProbability,
+          this.safe(base),
 
         comebackChance: 0,
 
         nextGoalProbability:
-          pressure.goalProbability,
+          this.safe(base),
 
-        fatigueIndex: 0,
+        fatigueIndex:
+          this.safe(
+            limited.length * 3
+          ),
 
-        snapshots:
-          limited
+        averagePressure:
+          this.safe(
+
+            (
+              pressure.homePressure +
+              pressure.awayPressure
+            ) / 2
+          ),
+
+        rhythmScore:
+          this.safe(
+            pressure.matchRhythm ?? 0
+          ),
+
+        stabilityScore: 100,
+
+        explosiveMoments: 0,
+
+        snapshots: limited,
+
+        updatedAt:
+          new Date().toISOString(),
+
+        averageGoalProbability:
+          this.safe(base),
+
+        emotionalIndex:
+          this.safe(
+            pressure.emotionalPressure ?? 50
+          ),
+
+        accelerationIndex: 0,
+
+        dominanceScoreHome:
+          this.safe(
+            pressure.homePressure
+          ),
+
+        dominanceScoreAway:
+          this.safe(
+            pressure.awayPressure
+          ),
+
+        chaosLevel: 0,
+
+        trendConfidence: 50
       };
     }
-
-    // ======================================
-    // LASTS
-    // ======================================
 
     const first =
       limited[0];
@@ -171,22 +303,20 @@ export class MatchTimelineEngine {
       ];
 
     // ======================================
-    // PRESSURE DIFF
+    // PRESSURE TREND
     // ======================================
 
     const pressureDiff =
+
       (
         last.homePressure +
         last.awayPressure
       ) -
+
       (
         first.homePressure +
         first.awayPressure
       );
-
-    // ======================================
-    // PRESSURE TREND
-    // ======================================
 
     let pressureTrend:
       | 'EXPLODING'
@@ -194,33 +324,38 @@ export class MatchTimelineEngine {
       | 'STABLE'
       | 'FALLING';
 
-    if (pressureDiff >= 35) {
+    if (
+      pressureDiff >= 35
+    ) {
 
       pressureTrend =
         'EXPLODING';
+    }
 
-    } else if (
+    else if (
       pressureDiff >= 15
     ) {
 
       pressureTrend =
         'RISING';
+    }
 
-    } else if (
+    else if (
       pressureDiff <= -15
     ) {
 
       pressureTrend =
         'FALLING';
+    }
 
-    } else {
+    else {
 
       pressureTrend =
         'STABLE';
     }
 
     // ======================================
-    // MOMENTUM
+    // MOMENTUM TREND
     // ======================================
 
     let momentumTrend:
@@ -228,40 +363,59 @@ export class MatchTimelineEngine {
       | 'DOWN'
       | 'STABLE';
 
+    const firstGoal =
+      first.goalProbability ?? 0;
+
+    const lastGoal =
+      last.goalProbability ?? 0;
+
     if (
-      last.goalProbability >
-      first.goalProbability + 10
+      lastGoal >
+      firstGoal + 10
     ) {
 
-      momentumTrend = 'UP';
+      momentumTrend =
+        'UP';
+    }
 
-    } else if (
-      last.goalProbability <
-      first.goalProbability - 10
+    else if (
+      lastGoal <
+      firstGoal - 10
     ) {
 
-      momentumTrend = 'DOWN';
+      momentumTrend =
+        'DOWN';
+    }
 
-    } else {
+    else {
 
-      momentumTrend = 'STABLE';
+      momentumTrend =
+        'STABLE';
     }
 
     // ======================================
-    // DOMINANT TEAM
+    // DOMINANCE
     // ======================================
 
-    const homeAverage =
+    const homeAvg =
+
       limited.reduce(
-        (acc, item) =>
-          acc + item.homePressure,
+
+        (a, i) =>
+
+          a + i.homePressure,
+
         0
       ) / limited.length;
 
-    const awayAverage =
+    const awayAvg =
+
       limited.reduce(
-        (acc, item) =>
-          acc + item.awayPressure,
+
+        (a, i) =>
+
+          a + i.awayPressure,
+
         0
       ) / limited.length;
 
@@ -271,22 +425,24 @@ export class MatchTimelineEngine {
       | 'BALANCED';
 
     if (
-      homeAverage >
-      awayAverage + 10
+      homeAvg >
+      awayAvg + 10
     ) {
 
       dominantWindow =
         'HOME';
+    }
 
-    } else if (
-      awayAverage >
-      homeAverage + 10
+    else if (
+      awayAvg >
+      homeAvg + 10
     ) {
 
       dominantWindow =
         'AWAY';
+    }
 
-    } else {
+    else {
 
       dominantWindow =
         'BALANCED';
@@ -297,62 +453,158 @@ export class MatchTimelineEngine {
     // ======================================
 
     const volatility =
-      Number(
-        (
-          limited.reduce(
-            (acc, item, index) => {
 
-              if (index === 0) {
-                return acc;
-              }
+      limited.length > 1
 
-              const prev =
-                limited[index - 1];
+        ? this.safe(
 
-              return (
-                acc +
-                Math.abs(
-                  item.goalProbability -
-                  prev.goalProbability
-                )
-              );
+            limited.reduce(
+              (
+                acc,
+                item,
+                i
+              ) => {
 
-            },
-            0
-          ) / limited.length
-        ).toFixed(2)
+                if (i === 0) {
+                  return acc;
+                }
+
+                const prev =
+                  limited[i - 1];
+
+                return (
+
+                  acc +
+
+                  Math.abs(
+
+                    item.goalProbability -
+
+                    prev.goalProbability
+                  )
+                );
+              },
+
+              0
+            ) /
+
+            (
+              limited.length - 1
+            )
+          )
+
+        : 0;
+
+    // ======================================
+    // AVERAGE PRESSURE
+    // ======================================
+
+    const averagePressure =
+      this.safe(
+
+        limited.reduce(
+          (acc, item) =>
+
+            acc +
+
+            (
+              item.homePressure +
+              item.awayPressure
+            ) / 2,
+
+          0
+        ) / limited.length
       );
 
     // ======================================
-    // DANGER LEVEL
+    // RHYTHM
+    // ======================================
+
+    const rhythmScore =
+      this.safe(
+
+        limited.reduce(
+          (acc, item) =>
+
+            acc +
+            item.matchRhythm,
+
+          0
+        ) / limited.length
+      );
+
+    // ======================================
+    // AVERAGE GOAL PROBABILITY
+    // ======================================
+
+    const averageGoalProbability =
+      this.safe(
+
+        limited.reduce(
+          (acc, item) =>
+
+            acc +
+            item.goalProbability,
+
+          0
+        ) / limited.length
+      );
+
+    // ======================================
+    // EXPLOSIVE MOMENTS
+    // ======================================
+
+    const explosiveMoments =
+
+      limited.filter(
+
+        item =>
+
+          item.goalProbability >= 80 ||
+
+          item.intensity ===
+            'EXTREME'
+      ).length;
+
+    // ======================================
+    // STABILITY
+    // ======================================
+
+    const stabilityScore =
+      this.safe(
+        100 - volatility
+      );
+
+    // ======================================
+    // DANGER
     // ======================================
 
     const dangerLevel =
-      Math.min(
-        100,
+      this.safe(
 
-        Number(
-          (
-            (
-              last.goalProbability * 0.6
-            ) +
+        (
+          last.goalProbability * 0.55 +
 
-            (
-              volatility * 0.4
-            )
-          ).toFixed(2)
+          volatility * 0.2 +
+
+          rhythmScore * 0.25
         )
       );
 
     // ======================================
-    // COMEBACK CHANCE
+    // COMEBACK
     // ======================================
 
     const comebackChance =
-      Number(
+      this.safe(
+
         (
-          volatility * 0.8
-        ).toFixed(2)
+          volatility * 0.5 +
+
+          pressureDiff * 0.3 +
+
+          explosiveMoments * 4
+        )
       );
 
     // ======================================
@@ -360,10 +612,9 @@ export class MatchTimelineEngine {
     // ======================================
 
     const fatigueIndex =
-      Number(
-        (
-          limited.length * 2.5
-        ).toFixed(2)
+      this.safe(
+
+        limited.length * 3.5
       );
 
     // ======================================
@@ -371,19 +622,78 @@ export class MatchTimelineEngine {
     // ======================================
 
     const nextGoalProbability =
-      Math.min(
-        100,
+      this.safe(
 
-        Number(
-          (
-            (
-              last.goalProbability * 0.7
-            ) +
+        (
+          last.goalProbability * 0.65 +
 
+          dangerLevel * 0.2 +
+
+          rhythmScore * 0.15
+        )
+      );
+
+    // ======================================
+    // EMOTIONAL INDEX
+    // ======================================
+
+    const emotionalIndex =
+      this.safe(
+
+        limited.reduce(
+          (acc, item) =>
+
+            acc +
             (
-              dangerLevel * 0.3
-            )
-          ).toFixed(2)
+              item.emotionalPressure ?? 50
+            ),
+
+          0
+        ) / limited.length
+      );
+
+    // ======================================
+    // ACCELERATION
+    // ======================================
+
+    const accelerationIndex =
+      this.safe(
+
+        Math.abs(
+          last.goalProbability -
+          first.goalProbability
+        ) * 1.5
+      );
+
+    // ======================================
+    // CHAOS LEVEL
+    // ======================================
+
+    const chaosLevel =
+      this.safe(
+
+        (
+          volatility * 0.4 +
+
+          explosiveMoments * 6 +
+
+          accelerationIndex * 0.3
+        )
+      );
+
+    // ======================================
+    // TREND CONFIDENCE
+    // ======================================
+
+    const trendConfidence =
+      this.safe(
+
+        (
+          stabilityScore * 0.4 +
+
+          averagePressure * 0.3 +
+
+          rhythmScore * 0.3
         )
       );
 
@@ -409,9 +719,51 @@ export class MatchTimelineEngine {
 
       fatigueIndex,
 
+      averagePressure,
+
+      rhythmScore,
+
+      stabilityScore,
+
+      explosiveMoments,
+
       snapshots:
-        limited
+        limited,
+
+      updatedAt:
+        new Date().toISOString(),
+
+      averageGoalProbability,
+
+      emotionalIndex,
+
+      accelerationIndex,
+
+      dominanceScoreHome:
+        this.safe(homeAvg),
+
+      dominanceScoreAway:
+        this.safe(awayAvg),
+
+      chaosLevel,
+
+      trendConfidence
     };
+  }
+
+  // ======================================
+  // GET HISTORY
+  // ======================================
+
+  static getHistory(
+    matchId: string
+  ) {
+
+    return (
+      this.memory.get(
+        matchId
+      ) ?? []
+    );
   }
 
   // ======================================
@@ -434,6 +786,3 @@ export class MatchTimelineEngine {
     this.memory.clear();
   }
 }
-
-export const matchTimelineEngine =
-  new MatchTimelineEngine();

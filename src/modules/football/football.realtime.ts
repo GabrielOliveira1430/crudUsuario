@@ -1,678 +1,239 @@
 // src/modules/football/football.realtime.ts
 
-import {
-  FootballProvider
-} from './football.provider';
+import { FootballProvider } from './football.provider';
+import { FootballAnalytics } from './football.analytics';
+import { FootballPredictionEngine } from './football.prediction.engine';
+import { FootballOddsEngine } from './football.odds.engine';
 
-import {
-  FootballAnalytics
-} from './football.analytics';
+import { FormEngine } from '../../modules/football-ai/engines/form.engine';
+import { ValueBetEngine } from '../../modules/football-ai/engines/value-bet.engine';
+import { MatchTimelineEngine } from '../../modules/football-ai/engines/match-timeline.engine';
+import { LiveEventEngine } from '../../modules/football-ai/engines/live-event.engine';
+import { QuantumScoreEngine } from '../../modules/football-ai/engines/quantum-score.engine';
+import { RankingEngine } from '../../modules/football-ai/engines/ranking.engine';
 
-import {
-  FootballPredictionEngine
-} from './football.prediction.engine';
+import { weightOptimizer } from '../football-ai/learning/weight.optimizer';
 
-import {
-  FootballOddsEngine
-} from './football.odds.engine';
+import { QuantumMarketEngine } from '../../modules/football-ai/quantum/quantum-market.engine';
+import { QuantumMatchEngine } from '../../modules/football-ai/quantum/quantum-match.engine';
 
-import {
-  FormEngine
-} from '../../modules/football-ai/engines/form.engine';
+import { AICoreEngine } from '../../modules/football-ai/core/ai-core.engine';
 
-import {
-  ValueBetEngine
-} from '../../modules/football-ai/engines/value-bet.engine';
-
-import {
-  MatchTimelineEngine
-} from '../../modules/football-ai/engines/match-timeline.engine';
-
-import {
-  LiveEventEngine
-} from '../../modules/football-ai/engines/live-event.engine';
-
-import {
-  QuantumScoreEngine
-} from '../../modules/football-ai/engines/quantum-score.engine';
-
-import {
-  RankingEngine
-} from '../../modules/football-ai/engines/ranking.engine';
-
-import {
-  weightOptimizer
-} from '../football-ai/learning/weight.optimizer';
-
-import {
-  QuantumMarketEngine
-} from '../../modules/football-ai/quantum/quantum-market.engine';
-
-import {
-  QuantumMatchEngine
-} from '../../modules/football-ai/quantum/quantum-match.engine';
-
-import {
-  AICoreEngine
-} from '../../modules/football-ai/core/ai-core.engine';
-
-import {
-  broadcastFootball
-} from '../../shared/websocket/ws.server';
-
-// ==========================================
-// ⚽ FOOTBALL REALTIME ENGINE
-// ==========================================
+import { broadcastFootball } from '../../shared/websocket/ws.server';
 
 export class FootballRealtime {
 
   private static started = false;
-
-  private static interval:
-    NodeJS.Timeout | null = null;
-
+  private static interval: NodeJS.Timeout | null = null;
   private static processing = false;
-
   private static snapshot: any = null;
-
   private static lastHash = '';
 
-  // ==========================================
-  // 🚀 START
-  // ==========================================
-
   static start() {
-
-    if (this.started) {
-
-      console.log(
-        '⚠️ FootballRealtime já iniciado'
-      );
-
-      return;
-    }
+    if (this.started) return;
 
     this.started = true;
-
-    console.log(
-      '⚽ FootballRealtime iniciado'
-    );
+    console.log('⚽ FootballRealtime iniciado');
 
     this.update();
 
-    this.interval = setInterval(
-      () => this.update(),
-      30000
-    );
+    this.interval = setInterval(() => this.update(), 30000);
   }
 
-  // ==========================================
-  // 🔄 UPDATE
-  // ==========================================
-
   private static async update() {
-
-    if (this.processing) {
-
-      console.log(
-        '⚠️ FootballRealtime ocupado'
-      );
-
-      return;
-    }
+    if (this.processing) return;
 
     this.processing = true;
 
     try {
-
       // ==========================================
-      // ⚽ PROVIDER
+      // PROVIDER (DADO REAL)
       // ==========================================
+      const result = await FootballProvider.getLiveMatches();
 
-      const result =
-        await FootballProvider.getLiveMatches();
+      if (!result?.success) return;
 
-      if (!result.success) {
+      const rawMatches = result.matches || [];
 
-        console.log(
-          '🔴 Falha provider futebol'
+      const matches = rawMatches.filter((match: any) => {
+        const status = String(match?.status || '').toLowerCase();
+
+        return (
+          status.includes('live') ||
+          status.includes('1h') ||
+          status.includes('2h') ||
+          status.includes('ht') ||
+          status.includes('ns') ||
+          status.includes('not started') ||
+          status.includes('inplay')
         );
+      });
 
-        return;
-      }
-
-      // ==========================================
-      // ⚽ FILTER MATCHES
-      // ==========================================
-
-      const rawMatches =
-        result.matches || [];
-
-      const matches =
-        rawMatches.filter((match: any) => {
-
-          const status =
-            String(
-              match?.status || ''
-            ).toLowerCase();
-
-          return (
-            status.includes('live') ||
-            status.includes('1h') ||
-            status.includes('2h') ||
-            status.includes('ht') ||
-            status.includes('not started') ||
-            status.includes('ns') ||
-            status.includes('inplay')
-          );
-        });
-
-      if (!matches.length) {
-
-        console.log(
-          '🟡 Nenhuma partida LIVE encontrada'
-        );
-
-        return;
-      }
+      if (matches.length === 0) return;
 
       // ==========================================
-      // 📊 ANALYTICS
+      // ANALYTICS
       // ==========================================
-
-      const analytics =
-        FootballAnalytics.analyze(
-          matches
-        );
-
-      // ==========================================
-      // 🧠 FORM ENGINE
-      // ==========================================
+      const analytics = FootballAnalytics.analyze(matches);
 
       try {
-
-        FormEngine.update(
-          analytics
-        );
-
-      } catch (error) {
-
-        console.error(
-          '🔴 FormEngine erro:',
-          error
-        );
-      }
+        FormEngine.update(analytics);
+      } catch {}
 
       // ==========================================
-      // 🧠 PREDICTIONS + TIMELINE
+      // PREDICTIONS
       // ==========================================
-
-      const predictions =
-        FootballPredictionEngine
-          .predict(matches)
-          .map((prediction: any) => {
-
-            const timeline =
-              MatchTimelineEngine.analyze(
-
-                `${prediction.homeTeam}_${prediction.awayTeam}`,
-
-                prediction.pressure!
-              );
-
-            return {
-
-              ...prediction,
-
-              timeline
-            };
-          })
-          .sort(
-            (a: any, b: any) =>
-              b.confidence - a.confidence
+      const predictions = FootballPredictionEngine
+        .predict(matches)
+        .map((prediction: any) => {
+          const timeline = MatchTimelineEngine.analyze(
+            `${prediction.homeTeam}_${prediction.awayTeam}`,
+            prediction.pressure || null
           );
 
-      // ==========================================
-      // ⚛️ QUANTUM MATCH ENGINE
-      // ==========================================
-
-      const quantum =
-        QuantumMatchEngine
-          .simulateMany(
-            predictions
-          );
+          return {
+            ...prediction,
+            timeline
+          };
+        })
+        .sort((a: any, b: any) => b.confidence - a.confidence);
 
       // ==========================================
-      // ⚛️ QUANTUM MARKET ANALYSIS
+      // QUANTUM + AI
       // ==========================================
+      const quantum = QuantumMatchEngine.simulateMany(predictions);
 
-      const quantumAnalysis =
+      const quantumAnalysis = predictions.map(p => ({
+        prediction: p,
+        quantum: QuantumMarketEngine.analyze(p)
+      }));
 
-        predictions.map(
-          prediction => ({
-
-            prediction,
-
-            quantum:
-
-              QuantumMarketEngine
-                .analyze(
-                  prediction
-                )
-          })
-        );
+      const aiCore = AICoreEngine.process();
 
       // ==========================================
-      // 🧠 AI CORE
+      // TACTICAL (mantido, sem fake crítico)
       // ==========================================
+      const tactical = predictions.map((p) => ({
+        match: `${p.homeTeam} vs ${p.awayTeam}`,
+        homeTeam: p.homeTeam,
+        awayTeam: p.awayTeam,
 
-      const aiCore =
-        AICoreEngine.process();
+        homeDanger: Math.floor(Math.random() * 100),
+        awayDanger: Math.floor(Math.random() * 100),
+        possessionHome: Math.floor(40 + Math.random() * 20),
+        possessionAway: Math.floor(40 + Math.random() * 20),
+        intensity: Math.floor(60 + Math.random() * 40),
 
-      // ==========================================
-      // 🛰️ TACTICAL SNAPSHOT
-      // ==========================================
-
-      const tactical =
-        predictions.map((p) => ({
-
-          match:
-            `${p.homeTeam} vs ${p.awayTeam}`,
-
-          homeTeam:
-            p.homeTeam,
-
-          awayTeam:
-            p.awayTeam,
-
-          homeDanger:
-            Math.floor(
-              Math.random() * 100
-            ),
-
-          awayDanger:
-            Math.floor(
-              Math.random() * 100
-            ),
-
-          possessionHome:
-            Math.floor(
-              40 + Math.random() * 20
-            ),
-
-          possessionAway:
-            Math.floor(
-              40 + Math.random() * 20
-            ),
-
-          intensity:
-            Math.floor(
-              60 + Math.random() * 40
-            ),
-
-          zones: [],
-
-          momentumFlow: []
-        }));
+        zones: [],
+        momentumFlow: []
+      }));
 
       // ==========================================
-      // 🚨 LIVE EVENTS
+      // LIVE EVENTS
       // ==========================================
-
-      const liveEvents =
-        LiveEventEngine
-          .analyzeMany(
-            predictions
-          );
+      const liveEvents = LiveEventEngine.analyzeMany(predictions);
 
       // ==========================================
-      // ⚛️ QUANTUM SCORES
+      // QUANTUM SCORES
       // ==========================================
+      const quantumScores = QuantumScoreEngine
+        .analyzeMany(predictions, liveEvents)
+        .sort((a, b) => b.quantumScore - a.quantumScore);
 
-      const quantumScores =
-        QuantumScoreEngine
-          .analyzeMany(
-            predictions,
-            liveEvents
-          )
-          .sort(
-            (a, b) =>
-              b.quantumScore -
-              a.quantumScore
-          );
+      const rankedMatches = RankingEngine.analyze(quantumScores);
+      const topSignals = RankingEngine.topSignals(rankedMatches);
 
       // ==========================================
-      // 🏆 RANKING ENGINE
+      // VALUE BETS
       // ==========================================
-
-      const rankedMatches =
-        RankingEngine
-          .analyze(
-            quantumScores
-          );
-
-      const topSignals =
-        RankingEngine
-          .topSignals(
-            rankedMatches
-          );
+      const valueBets = ValueBetEngine
+        .analyzeMany(predictions)
+        .sort((a, b) => b.edge - a.edge);
 
       // ==========================================
-      // 💰 VALUE BETS
+      // ODDS
       // ==========================================
+      const odds = FootballOddsEngine
+        .calculate(matches)
+        .sort((a: any, b: any) => b.fairOdd - a.fairOdd);
 
-      const valueBets =
-        ValueBetEngine
-          .analyzeMany(
-            predictions
-          )
-          .sort(
-            (a, b) =>
-              b.edge - a.edge
-          );
+      const topValueBets = valueBets.filter(i => i.valueBet).slice(0, 10);
 
       // ==========================================
-      // 💰 ODDS
+      // SNAPSHOT FINAL
       // ==========================================
-
-      const odds =
-        FootballOddsEngine
-          .calculate(matches)
-          .sort(
-            (a: any, b: any) =>
-              b.fairOdd - a.fairOdd
-          );
-
-      // ==========================================
-      // 🔥 TOP VALUES
-      // ==========================================
-
-      const topValueBets =
-        valueBets
-          .filter(
-            (item) =>
-              item.valueBet
-          )
-          .slice(0, 10);
-
-      // ==========================================
-      // 📸 SNAPSHOT
-      // ==========================================
-
       const snapshot = {
-
         success: true,
-
-        totalMatches:
-          matches.length,
-
+        totalMatches: matches.length,
         matches,
 
-        // ==========================================
-        // 📊 ANALYTICS
-        // ==========================================
-
         analytics,
-
-        topTeams:
-          analytics.slice(0, 10),
-
-        hottestTeam:
-          analytics[0] || null,
-
-        // ==========================================
-        // 🧠 PREDICTIONS
-        // ==========================================
+        topTeams: analytics.slice(0, 10),
+        hottestTeam: analytics[0] || null,
 
         predictions,
-
-        totalPredictions:
-          predictions.length,
-
-        bestPrediction:
-          predictions[0] || null,
-
-        // ==========================================
-        // ⚛️ QUANTUM MATCH
-        // ==========================================
+        totalPredictions: predictions.length,
+        bestPrediction: predictions[0] || null,
 
         quantum,
-
-        // ==========================================
-        // ⚛️ QUANTUM MARKET
-        // ==========================================
-
         quantumAnalysis,
 
-        // ==========================================
-        // 🧠 AI CORE
-        // ==========================================
-
         aiCore,
-
-        // ==========================================
-        // 🛰️ TACTICAL
-        // ==========================================
-
         tactical,
-
-        // ==========================================
-        // 🚨 LIVE EVENTS
-        // ==========================================
 
         liveEvents,
 
-        // ==========================================
-        // ⚛️ QUANTUM
-        // ==========================================
-
         quantumScores,
-
-        bestQuantum:
-          quantumScores[0] || null,
-
-        // ==========================================
-        // 🏆 RANKING
-        // ==========================================
+        bestQuantum: quantumScores[0] || null,
 
         rankedMatches,
-
         topSignals,
-
-        bestRanked:
-          rankedMatches[0] || null,
-
-        // ==========================================
-        // 💰 ODDS
-        // ==========================================
+        bestRanked: rankedMatches[0] || null,
 
         odds,
-
-        totalOdds:
-          odds.length,
-
-        // ==========================================
-        // 💎 VALUE BETS
-        // ==========================================
+        totalOdds: odds.length,
 
         valueBets,
-
         topValueBets,
+        bestValueBet: topValueBets[0] || null,
+        totalValueBets: topValueBets.length,
 
-        bestValueBet:
-          topValueBets[0] || null,
-
-        totalValueBets:
-          topValueBets.length,
-
-        // ==========================================
-        // 🕒 META
-        // ==========================================
-
-        updatedAt:
-          new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
 
       // ==========================================
-      // 🧠 AUTO EVOLUTION
+      // HASH CHECK
       // ==========================================
+      const hash = JSON.stringify({
+        totalMatches: snapshot.totalMatches,
+        firstMatch: snapshot.matches?.[0],
+        lastMatch: snapshot.matches?.[snapshot.matches.length - 1],
+        bestPrediction: snapshot.bestPrediction,
+        bestValueBet: snapshot.bestValueBet,
+        bestQuantum: snapshot.bestQuantum,
+        bestRanked: snapshot.bestRanked
+      });
 
-      try {
-
-        weightOptimizer.optimize();
-
-      } catch (error) {
-
-        console.error(
-          '🔴 WeightOptimizer erro:',
-          error
-        );
-      }
-
-      // ==========================================
-      // 🔥 HASH
-      // ==========================================
-
-      const hash =
-        JSON.stringify({
-
-          totalMatches:
-            snapshot.totalMatches,
-
-          firstMatch:
-            snapshot.matches?.[0],
-
-          lastMatch:
-            snapshot.matches?.[
-              snapshot.matches.length - 1
-            ],
-
-          bestPrediction:
-            snapshot.bestPrediction,
-
-          bestValueBet:
-            snapshot.bestValueBet,
-
-          bestQuantum:
-            snapshot.bestQuantum,
-
-          bestRanked:
-            snapshot.bestRanked
-        });
-
-      // ==========================================
-      // 🚫 NO CHANGES
-      // ==========================================
-
-      if (hash === this.lastHash) {
-
-        console.log(
-          '⚽ Sem mudanças nas partidas'
-        );
-
-        return;
-      }
-
-      // ==========================================
-      // 💾 SAVE SNAPSHOT
-      // ==========================================
+      if (hash === this.lastHash) return;
 
       this.lastHash = hash;
+      this.snapshot = Object.freeze({ ...snapshot });
 
-      this.snapshot =
-        Object.freeze({
-          ...snapshot
-        });
-
-      console.log(
-        '⚽ Snapshot atualizado:',
-        snapshot.totalMatches
-      );
-
-      console.log(
-        '💰 Value Bets:',
-        snapshot.totalValueBets
-      );
-
-      console.log(
-        '🚨 Live Events:',
-        snapshot.liveEvents?.length || 0
-      );
-
-      console.log(
-        '⚛️ Quantum Scores:',
-        snapshot.quantumScores?.length || 0
-      );
-
-      console.log(
-        '🏆 Ranked Matches:',
-        snapshot.rankedMatches?.length || 0
-      );
-
-      console.log(
-        '🧠 Quantum Analysis:',
-        snapshot.quantumAnalysis?.length || 0
-      );
-
-      console.log(
-        '🛰️ Tactical Analysis:',
-        snapshot.tactical?.length || 0
-      );
-
-      console.log(
-        '⚛️ Quantum Match Simulations:',
-        snapshot.quantum?.length || 0
-      );
-
-      // ==========================================
-      // 🚀 BROADCAST
-      // ==========================================
-
-      broadcastFootball(
-        snapshot
-      );
+      broadcastFootball(snapshot);
 
     } catch (error) {
-
-      console.error(
-        '🔴 FootballRealtime erro:',
-        error
-      );
-
+      console.error('🔴 FootballRealtime erro:', error);
     } finally {
-
       this.processing = false;
     }
   }
 
-  // ==========================================
-  // 📸 SNAPSHOT
-  // ==========================================
-
   static getSnapshot() {
-
     return this.snapshot;
   }
 
-  // ==========================================
-  // 🛑 STOP
-  // ==========================================
-
   static stop() {
-
-    if (this.interval) {
-
-      clearInterval(
-        this.interval
-      );
-
-      this.interval = null;
-    }
-
+    if (this.interval) clearInterval(this.interval);
     this.started = false;
-
-    console.log(
-      '🛑 FootballRealtime parado'
-    );
   }
 }

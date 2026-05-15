@@ -18,7 +18,7 @@ export type SmartMoneyFlow = {
 };
 
 // ======================================
-// ENGINE
+// 🧠 SMART MONEY TRACKER (STABLE MODEL)
 // ======================================
 
 export class SmartMoneyTracker {
@@ -27,44 +27,53 @@ export class SmartMoneyTracker {
     team: string
   ): SmartMoneyFlow {
 
-    const volume =
-      random(10000, 1000000);
+    // ======================================
+    // 📊 BASE SIMULATION (CONTROLADA)
+    // ======================================
 
-    const pressure =
-      random(0, 100);
+    const volume =
+      random(50000, 800000);
+
+    const institutionalPressure =
+      random(20, 100);
 
     const confidence =
-      random(40, 95);
+      Math.min(
+        95,
+        Math.max(
+          40,
+          Math.floor(
+            50 + institutionalPressure * 0.4
+          )
+        )
+      );
+
+    // ======================================
+    // 🚨 DETECÇÃO DE SUSPEITA (REALISTA)
+    // ======================================
+
+    const suspicious =
+      institutionalPressure >= 78 &&
+      volume > 500000;
 
     return {
-
       team,
 
-      moneyVolume:
-        volume,
+      moneyVolume: volume,
 
       confidence,
 
-      institutionalPressure:
-        pressure,
+      institutionalPressure,
 
-      suspicious:
-        pressure >= 80
+      suspicious
     };
   }
 }
 
 // ======================================
-// HELPER
+// 🔧 HELPER
 // ======================================
 
-function random(
-  min: number,
-  max: number
-) {
-
-  return Math.floor(
-    Math.random() *
-    (max - min + 1)
-  ) + min;
+function random(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }

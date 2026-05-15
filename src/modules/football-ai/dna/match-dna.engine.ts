@@ -6,13 +6,80 @@ import {
 
 import type {
   FootballMatch
-} from '../../football/providers/football.types';
+} from '../../football/football.provider';
+
+// ======================================
+// TYPES
+// ======================================
+
+export type TeamDNA = {
+
+  team: string;
+
+  offensiveDNA: number;
+
+  defensiveDNA: number;
+
+  emotionalStability: number;
+
+  pressureResponse: number;
+
+  comebackPower: number;
+
+  collapseRisk: number;
+
+  chaosIndex: number;
+
+  momentumStrength: number;
+
+  dominance: number;
+
+  updatedAt: string;
+};
 
 // ======================================
 // ENGINE
 // ======================================
 
 export class MatchDNAEngine {
+
+  // ======================================
+  // SAFE
+  // ======================================
+
+  private static safe(
+    value: unknown,
+    fallback = 0
+  ) {
+
+    const parsed =
+      Number(value);
+
+    if (
+      Number.isNaN(parsed) ||
+      !Number.isFinite(parsed)
+    ) {
+      return fallback;
+    }
+
+    return parsed;
+  }
+
+  // ======================================
+  // LIMIT
+  // ======================================
+
+  private static limit(
+    value: number,
+    min = 0,
+    max = 100
+  ) {
+
+    return Math.min(
+      max,
+      Math.max(min, value)
+    );
+  }
 
   // ======================================
   // BUILD DNA
@@ -22,81 +89,167 @@ export class MatchDNAEngine {
     match: FootballMatch
   ) {
 
+    const homeGoals =
+      this.safe(
+        match.homeScore
+      );
+
+    const awayGoals =
+      this.safe(
+        match.awayScore
+      );
+
+    const minute =
+      this.safe(
+        match.minute,
+        1
+      );
+
     // ======================================
-    // RANDOMIZED AI
+    // HOME DNA
     // ======================================
 
-    const homeDNA = {
+    const homeDNA: TeamDNA = {
 
       team:
         match.homeTeam,
 
       offensiveDNA:
-        random(50, 100),
+        this.calculateOffensiveDNA(
+          homeGoals,
+          minute
+        ),
 
       defensiveDNA:
-        random(50, 100),
+        this.calculateDefensiveDNA(
+          awayGoals
+        ),
 
       emotionalStability:
-        random(40, 100),
+        this.calculateEmotionalStability(
+          homeGoals,
+          awayGoals
+        ),
 
       pressureResponse:
-        random(40, 100),
+        this.calculatePressureResponse(
+          minute,
+          homeGoals,
+          awayGoals
+        ),
 
       comebackPower:
-        random(30, 100),
+        this.calculateComebackPower(
+          homeGoals,
+          awayGoals,
+          minute
+        ),
 
       collapseRisk:
-        random(0, 70),
+        this.calculateCollapseRisk(
+          homeGoals,
+          awayGoals,
+          minute
+        ),
 
       chaosIndex:
-        random(10, 100),
+        this.calculateChaosIndex(
+          homeGoals,
+          awayGoals,
+          minute
+        ),
 
       momentumStrength:
-        random(40, 100),
+        this.calculateMomentum(
+          homeGoals,
+          awayGoals,
+          minute
+        ),
 
       dominance:
-        random(40, 100),
+        this.calculateDominance(
+          homeGoals,
+          awayGoals
+        ),
 
       updatedAt:
         new Date().toISOString()
     };
 
-    const awayDNA = {
+    // ======================================
+    // AWAY DNA
+    // ======================================
+
+    const awayDNA: TeamDNA = {
 
       team:
         match.awayTeam,
 
       offensiveDNA:
-        random(50, 100),
+        this.calculateOffensiveDNA(
+          awayGoals,
+          minute
+        ),
 
       defensiveDNA:
-        random(50, 100),
+        this.calculateDefensiveDNA(
+          homeGoals
+        ),
 
       emotionalStability:
-        random(40, 100),
+        this.calculateEmotionalStability(
+          awayGoals,
+          homeGoals
+        ),
 
       pressureResponse:
-        random(40, 100),
+        this.calculatePressureResponse(
+          minute,
+          awayGoals,
+          homeGoals
+        ),
 
       comebackPower:
-        random(30, 100),
+        this.calculateComebackPower(
+          awayGoals,
+          homeGoals,
+          minute
+        ),
 
       collapseRisk:
-        random(0, 70),
+        this.calculateCollapseRisk(
+          awayGoals,
+          homeGoals,
+          minute
+        ),
 
       chaosIndex:
-        random(10, 100),
+        this.calculateChaosIndex(
+          homeGoals,
+          awayGoals,
+          minute
+        ),
 
       momentumStrength:
-        random(40, 100),
+        this.calculateMomentum(
+          awayGoals,
+          homeGoals,
+          minute
+        ),
 
       dominance:
-        random(40, 100),
+        this.calculateDominance(
+          awayGoals,
+          homeGoals
+        ),
 
       updatedAt:
         new Date().toISOString()
     };
+
+    // ======================================
+    // MEMORY
+    // ======================================
 
     dnaMemory.set(
       match.homeTeam,
@@ -115,19 +268,310 @@ export class MatchDNAEngine {
       awayDNA
     };
   }
+
+  // ======================================
+  // OFFENSIVE DNA
+  // ======================================
+
+  private static calculateOffensiveDNA(
+    goals: number,
+    minute: number
+  ) {
+
+    let score = 42;
+
+    score += goals * 18;
+
+    if (
+      minute >= 70
+    ) {
+      score += 8;
+    }
+
+    if (
+      goals >= 3
+    ) {
+      score += 10;
+    }
+
+    return Number(
+      this.limit(score)
+        .toFixed(2)
+    );
+  }
+
+  // ======================================
+  // DEFENSIVE DNA
+  // ======================================
+
+  private static calculateDefensiveDNA(
+    conceded: number
+  ) {
+
+    let score =
+      100 -
+      (conceded * 20);
+
+    if (
+      conceded >= 3
+    ) {
+      score -= 10;
+    }
+
+    return Number(
+      this.limit(
+        score,
+        10,
+        100
+      ).toFixed(2)
+    );
+  }
+
+  // ======================================
+  // EMOTIONAL STABILITY
+  // ======================================
+
+  private static calculateEmotionalStability(
+    goals: number,
+    conceded: number
+  ) {
+
+    let score = 65;
+
+    const diff =
+      goals - conceded;
+
+    if (
+      diff > 0
+    ) {
+      score += diff * 10;
+    }
+
+    if (
+      diff < 0
+    ) {
+      score += diff * 12;
+    }
+
+    return Number(
+      this.limit(
+        score,
+        20,
+        100
+      ).toFixed(2)
+    );
+  }
+
+  // ======================================
+  // PRESSURE RESPONSE
+  // ======================================
+
+  private static calculatePressureResponse(
+    minute: number,
+    goals: number,
+    conceded: number
+  ) {
+
+    let score = 50;
+
+    if (
+      minute >= 70
+    ) {
+      score += 12;
+    }
+
+    if (
+      goals < conceded
+    ) {
+      score += 15;
+    }
+
+    if (
+      goals > conceded
+    ) {
+      score += 5;
+    }
+
+    return Number(
+      this.limit(score)
+        .toFixed(2)
+    );
+  }
+
+  // ======================================
+  // COMEBACK POWER
+  // ======================================
+
+  private static calculateComebackPower(
+    goals: number,
+    conceded: number,
+    minute: number
+  ) {
+
+    let score = 40;
+
+    if (
+      goals < conceded &&
+      minute >= 55
+    ) {
+
+      score += 35;
+    }
+
+    if (
+      goals === conceded &&
+      minute >= 70
+    ) {
+
+      score += 15;
+    }
+
+    if (
+      goals > conceded
+    ) {
+
+      score -= 5;
+    }
+
+    return Number(
+      this.limit(score)
+        .toFixed(2)
+    );
+  }
+
+  // ======================================
+  // COLLAPSE RISK
+  // ======================================
+
+  private static calculateCollapseRisk(
+    goals: number,
+    conceded: number,
+    minute: number
+  ) {
+
+    let score = 15;
+
+    if (
+      conceded > goals
+    ) {
+
+      score += 25;
+    }
+
+    if (
+      minute >= 75
+    ) {
+
+      score += 10;
+    }
+
+    if (
+      conceded >= 3
+    ) {
+
+      score += 15;
+    }
+
+    return Number(
+      this.limit(score)
+        .toFixed(2)
+    );
+  }
+
+  // ======================================
+  // CHAOS INDEX
+  // ======================================
+
+  private static calculateChaosIndex(
+    homeGoals: number,
+    awayGoals: number,
+    minute: number
+  ) {
+
+    const totalGoals =
+      homeGoals + awayGoals;
+
+    const diff =
+      Math.abs(
+        homeGoals - awayGoals
+      );
+
+    let score =
+      totalGoals * 18;
+
+    if (
+      diff <= 1
+    ) {
+      score += 20;
+    }
+
+    if (
+      minute >= 70
+    ) {
+      score += 10;
+    }
+
+    return Number(
+      this.limit(score)
+        .toFixed(2)
+    );
+  }
+
+  // ======================================
+  // MOMENTUM
+  // ======================================
+
+  private static calculateMomentum(
+    goals: number,
+    conceded: number,
+    minute: number
+  ) {
+
+    let score =
+      50 +
+      (
+        (goals - conceded) * 15
+      );
+
+    if (
+      minute >= 70
+    ) {
+      score += 5;
+    }
+
+    return Number(
+      this.limit(
+        score,
+        5,
+        100
+      ).toFixed(2)
+    );
+  }
+
+  // ======================================
+  // DOMINANCE
+  // ======================================
+
+  private static calculateDominance(
+    goals: number,
+    conceded: number
+  ) {
+
+    const score =
+      50 +
+      (
+        (goals - conceded) * 20
+      );
+
+    return Number(
+      this.limit(
+        score,
+        5,
+        100
+      ).toFixed(2)
+    );
+  }
 }
 
-// ======================================
-// HELPERS
-// ======================================
-
-function random(
-  min: number,
-  max: number
-) {
-
-  return Math.floor(
-    Math.random() *
-    (max - min + 1)
-  ) + min;
-}
+export const matchDNAEngine =
+  new MatchDNAEngine();
